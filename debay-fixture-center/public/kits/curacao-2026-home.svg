@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-label="库拉索 2026 home kit">
+  <defs>
+    <clipPath id="shirt-curacao">
+      <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z"/>
+    </clipPath>
+    <filter id="shadow-curacao" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#111111" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow-curacao)">
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="#003da5"/>
+    <g clip-path="url(#shirt-curacao)"><path d="M55 84 C86 62 116 106 166 80" fill="none" stroke="#f9e814" stroke-width="8" opacity="0.28"/><path d="M55 110 C86 88 116 132 166 106" fill="none" stroke="#f9e814" stroke-width="8" opacity="0.36000000000000004"/><path d="M55 136 C86 114 116 158 166 132" fill="none" stroke="#f9e814" stroke-width="8" opacity="0.44000000000000006"/><path d="M55 162 C86 140 116 184 166 158" fill="none" stroke="#f9e814" stroke-width="8" opacity="0.52"/><path d="M55 188 C86 166 116 210 166 184" fill="none" stroke="#f9e814" stroke-width="8" opacity="0.6000000000000001"/><path d="M82 226 H158" stroke="#ffffff" stroke-width="8" opacity=".68"/></g>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#ffffff" opacity=".9"/>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#f9e814" opacity=".32"/>
+    <path d="M80 94 V226 H160 V94" fill="none" stroke="#000000" stroke-opacity=".13" stroke-width="2"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="3"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#111111" stroke-opacity=".18" stroke-width="1.5"/>
+  </g>
+</svg>

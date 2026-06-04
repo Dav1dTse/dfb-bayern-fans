@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-label="科特迪瓦 2026 home kit">
+  <defs>
+    <clipPath id="shirt-ivory-coast">
+      <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z"/>
+    </clipPath>
+    <filter id="shadow-ivory-coast" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#111111" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow-ivory-coast)">
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="#f77f00"/>
+    <g clip-path="url(#shirt-ivory-coast)"><path d="M62 54 L108 226" stroke="#009e60" stroke-width="8" opacity=".28"/><path d="M82 54 L122 226" stroke="#ffffff" stroke-width="8" opacity=".28"/><path d="M102 54 L136 226" stroke="#009e60" stroke-width="8" opacity=".28"/><path d="M122 54 L150 226" stroke="#ffffff" stroke-width="8" opacity=".28"/><path d="M142 54 L164 226" stroke="#009e60" stroke-width="8" opacity=".28"/><path d="M162 54 L178 226" stroke="#ffffff" stroke-width="8" opacity=".28"/><circle cx="120" cy="112" r="32" fill="#ffffff" opacity=".22"/></g>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#ffffff" opacity=".9"/>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#ffffff" opacity=".32"/>
+    <path d="M80 94 V226 H160 V94" fill="none" stroke="#000000" stroke-opacity=".13" stroke-width="2"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="3"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#111111" stroke-opacity=".18" stroke-width="1.5"/>
+  </g>
+</svg>

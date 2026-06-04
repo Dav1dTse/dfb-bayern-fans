@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-label="塞内加尔 2026 home kit">
+  <defs>
+    <clipPath id="shirt-senegal">
+      <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z"/>
+    </clipPath>
+    <filter id="shadow-senegal" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#111111" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow-senegal)">
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="#ffffff"/>
+    <g clip-path="url(#shirt-senegal)"><path d="M72 86 L112 60 L160 92 L122 116 Z" fill="#00853f" opacity=".85"/><path d="M80 146 L122 124 L170 156 L126 180 Z" fill="#e31b23" opacity=".72"/><path d="M120 77 L127 96 L147 96 L131 108 L137 128 L120 116 L103 128 L109 108 L93 96 L113 96 Z" fill="#fdef42" opacity=".95"/></g>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#ffffff" opacity=".9"/>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#00853f" opacity=".32"/>
+    <path d="M80 94 V226 H160 V94" fill="none" stroke="#000000" stroke-opacity=".13" stroke-width="2"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="3"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#111111" stroke-opacity=".18" stroke-width="1.5"/>
+  </g>
+</svg>

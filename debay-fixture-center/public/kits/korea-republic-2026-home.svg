@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-label="韩国 2026 home kit">
+  <defs>
+    <clipPath id="shirt-korea-republic">
+      <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z"/>
+    </clipPath>
+    <filter id="shadow-korea-republic" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#111111" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow-korea-republic)">
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="#f04c6a"/>
+    <g clip-path="url(#shirt-korea-republic)"><path d="M68 62 C100 82 76 128 160 151" fill="none" stroke="#ffffff" stroke-width="7" opacity=".26"/><path d="M83 62 C105 94 90 138 156 158" fill="none" stroke="#2a2e8f" stroke-width="7" opacity=".26"/><path d="M98 62 C110 106 104 148 152 165" fill="none" stroke="#ffffff" stroke-width="7" opacity=".26"/><path d="M113 62 C115 118 118 158 148 172" fill="none" stroke="#2a2e8f" stroke-width="7" opacity=".26"/><path d="M128 62 C120 130 132 168 144 179" fill="none" stroke="#ffffff" stroke-width="7" opacity=".26"/><path d="M143 62 C125 142 146 178 140 186" fill="none" stroke="#2a2e8f" stroke-width="7" opacity=".26"/><path d="M158 62 C130 154 160 188 136 193" fill="none" stroke="#ffffff" stroke-width="7" opacity=".26"/><path d="M173 62 C135 166 174 198 132 200" fill="none" stroke="#2a2e8f" stroke-width="7" opacity=".26"/></g>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#ffffff" opacity=".9"/>
+    <path d="M96 22 H144 L132 47 H108 Z" fill="#2a2e8f" opacity=".32"/>
+    <path d="M80 94 V226 H160 V94" fill="none" stroke="#000000" stroke-opacity=".13" stroke-width="2"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#ffffff" stroke-opacity=".72" stroke-width="3"/>
+    <path d="M72 42 L96 22 H144 L168 42 L210 79 L176 119 L160 94 V226 H80 V94 L64 119 L30 79 Z" fill="none" stroke="#111111" stroke-opacity=".18" stroke-width="1.5"/>
+  </g>
+</svg>
