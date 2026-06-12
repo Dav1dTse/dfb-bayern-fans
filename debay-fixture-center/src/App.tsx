@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { BayernPlayerFilter, type BayernPlayerOption } from "./components/BayernPlayerFilter";
 import { FilterTabs } from "./components/FilterTabs";
-import { FixtureCard } from "./components/FixtureCard";
 import { Hero } from "./components/Hero";
+import { MatchCard } from "./components/MatchCard";
 import { SearchBar } from "./components/SearchBar";
 import { SelectedFixturesPanel } from "./components/SelectedFixturesPanel";
 import { TimezoneSelector } from "./components/TimezoneSelector";
 import { baseTimeZones, fixtures } from "./data/fixtures";
+import { toMatchViewModel } from "./data/matchDataAdapter";
 import type { Fixture, FixtureFilter } from "./types";
 import { getBrowserTimeZone } from "./utils/time";
 
@@ -169,15 +170,18 @@ export default function App() {
           </div>
 
           {filteredFixtures.length > 0 ? (
-            filteredFixtures.map((fixture) => (
-              <FixtureCard
-                key={fixture.id}
-                fixture={fixture}
-                selected={selectedIds.has(fixture.id)}
-                timeZone={timeZone}
-                onToggle={toggleFixture}
-              />
-            ))
+            filteredFixtures.map((fixture) => {
+              const match = toMatchViewModel(fixture, timeZone);
+
+              return (
+                <MatchCard
+                  key={fixture.id}
+                  match={match}
+                  selected={selectedIds.has(fixture.id)}
+                  onToggle={toggleFixture}
+                />
+              );
+            })
           ) : (
             <div className="no-results">
               <strong>没有匹配的比赛</strong>

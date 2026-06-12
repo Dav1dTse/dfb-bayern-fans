@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import type { Fixture, Importance } from "../types";
-import { getCountryTheme } from "../data/countryThemes";
-import { getPlayerImage } from "../data/playerImages";
+import { getCountryFlagEmoji, getCountryTheme } from "../data/countryThemes";
 import { getMatchKit } from "../data/matchKits";
+import { getPlayerImage } from "../data/playerImages";
 import { getTeamKit } from "../data/teamKits";
 import {
   formatCompactDate,
@@ -26,6 +26,7 @@ const importanceLabel: Record<Importance, string> = {
 };
 
 const bayernLogoSrc = "/brand/fc-bayern-muenchen-logo-2024.svg";
+const dfbLogoSrc = "/brand/dfb-logo-2025.svg";
 
 const SelectIcon = ({ selected }: { selected: boolean }) => (
   <svg aria-hidden="true" viewBox="0 0 24 24" className="button-icon">
@@ -41,10 +42,7 @@ const SelectIcon = ({ selected }: { selected: boolean }) => (
 );
 
 type TeamStyle = CSSProperties & {
-  "--team-bg": string;
   "--team-border": string;
-  "--team-label-bg": string;
-  "--team-label-color": string;
 };
 
 const TeamBadge = ({
@@ -57,6 +55,7 @@ const TeamBadge = ({
   side: "home" | "away";
 }) => {
   const theme = getCountryTheme(teamName);
+  const flagEmoji = getCountryFlagEmoji(teamName);
   const matchKit = getMatchKit(matchNumber, side, teamName);
   const defaultTeamKit = getTeamKit(teamName);
   const kitSrc = matchKit?.src ?? defaultTeamKit?.homeKitSrc;
@@ -64,14 +63,11 @@ const TeamBadge = ({
     ? `${teamName} ${matchKit.matchNumber} 比赛球衣组合`
     : `${teamName} 2026 主场球衣`;
   const style: TeamStyle = {
-    "--team-bg": theme.background,
     "--team-border": theme.borderColor,
-    "--team-label-bg": theme.labelBackground,
-    "--team-label-color": theme.labelColor,
   };
 
   return (
-    <span className="team" style={style}>
+    <span className={`team team--${side}`} style={style}>
       <span className={`team__content team__content--${side}`}>
         {side === "away" && kitSrc && (
           <img
@@ -83,7 +79,12 @@ const TeamBadge = ({
             aria-hidden="true"
           />
         )}
-        <span className="team__name">{teamName}</span>
+        <span className="team__identity">
+          {flagEmoji && (
+            <span className="team-flag" aria-hidden="true">{flagEmoji}</span>
+          )}
+          <span className="team__name">{teamName}</span>
+        </span>
         {side === "home" && kitSrc && (
           <img
             className="team-kit team-kit--home"
@@ -120,7 +121,7 @@ export function FixtureCard({ fixture, selected, timeZone, onToggle }: FixtureCa
             <div className="fixture-card__theme-lockup" aria-label="主题关联">
               {fixture.relatedToGermany && (
                 <span className="theme-pill theme-pill--germany">
-                  <span className="theme-pill__flag" aria-hidden="true" />
+                  <img src={dfbLogoSrc} alt="" />
                   德国队
                 </span>
               )}

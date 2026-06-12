@@ -5,6 +5,66 @@ export type CountryTheme = {
   labelColor: string;
 };
 
+const countryFlagEmojis: Record<string, string> = {
+  Germany: "🇩🇪",
+  France: "🇫🇷",
+  England: "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+  Canada: "🇨🇦",
+  Portugal: "🇵🇹",
+  Belgium: "🇧🇪",
+  Brazil: "🇧🇷",
+  Netherlands: "🇳🇱",
+  USA: "🇺🇸",
+  阿尔及利亚: "🇩🇿",
+  阿根廷: "🇦🇷",
+  澳大利亚: "🇦🇺",
+  奥地利: "🇦🇹",
+  比利时: "🇧🇪",
+  波黑: "🇧🇦",
+  巴西: "🇧🇷",
+  加拿大: "🇨🇦",
+  佛得角: "🇨🇻",
+  哥伦比亚: "🇨🇴",
+  克罗地亚: "🇭🇷",
+  库拉索: "🇨🇼",
+  捷克: "🇨🇿",
+  刚果民主共和国: "🇨🇩",
+  厄瓜多尔: "🇪🇨",
+  埃及: "🇪🇬",
+  英格兰: "🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}",
+  法国: "🇫🇷",
+  德国: "🇩🇪",
+  加纳: "🇬🇭",
+  海地: "🇭🇹",
+  伊朗: "🇮🇷",
+  伊拉克: "🇮🇶",
+  科特迪瓦: "🇨🇮",
+  日本: "🇯🇵",
+  约旦: "🇯🇴",
+  韩国: "🇰🇷",
+  墨西哥: "🇲🇽",
+  摩洛哥: "🇲🇦",
+  荷兰: "🇳🇱",
+  新西兰: "🇳🇿",
+  挪威: "🇳🇴",
+  巴拿马: "🇵🇦",
+  巴拉圭: "🇵🇾",
+  葡萄牙: "🇵🇹",
+  卡塔尔: "🇶🇦",
+  沙特阿拉伯: "🇸🇦",
+  苏格兰: "🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}",
+  塞内加尔: "🇸🇳",
+  南非: "🇿🇦",
+  西班牙: "🇪🇸",
+  瑞典: "🇸🇪",
+  瑞士: "🇨🇭",
+  突尼斯: "🇹🇳",
+  土耳其: "🇹🇷",
+  美国: "🇺🇸",
+  乌拉圭: "🇺🇾",
+  乌兹别克斯坦: "🇺🇿",
+};
+
 const fallbackTheme: CountryTheme = {
   background: "linear-gradient(135deg, #f3efe6, #ffffff)",
   borderColor: "#d8d0c1",
@@ -370,3 +430,6 @@ export const countryThemes: Record<string, CountryTheme> = {
 
 export const getCountryTheme = (countryName: string): CountryTheme =>
   countryThemes[countryName] ?? fallbackTheme;
+
+export const getCountryFlagEmoji = (countryName: string): string | undefined =>
+  countryFlagEmojis[countryName];
