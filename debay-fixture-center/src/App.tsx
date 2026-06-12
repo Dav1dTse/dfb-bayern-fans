@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AdminApp } from "./components/admin/AdminApp";
 import { BayernPlayerFilter, type BayernPlayerOption } from "./components/BayernPlayerFilter";
 import { FilterTabs } from "./components/FilterTabs";
 import { Hero } from "./components/Hero";
@@ -8,6 +9,9 @@ import { SelectedFixturesPanel } from "./components/SelectedFixturesPanel";
 import { TimezoneSelector } from "./components/TimezoneSelector";
 import { baseTimeZones, fixtures } from "./data/fixtures";
 import { toMatchViewModel } from "./data/matchDataAdapter";
+import { fetchPublicOnlineState, submitOnlinePrediction } from "./lib/online/apiClient";
+import { toLotteryPredictionSnapshots } from "./lib/online/predictionSnapshots";
+import type { PublicOnlineState, SubmitPredictionInput } from "./lib/online/types";
 import type { Fixture, FixtureFilter } from "./types";
 import { getBrowserTimeZone } from "./utils/time";
 
@@ -30,17 +34,51 @@ const getSearchHaystack = (fixture: Fixture): string =>
     .join(" ")
     .toLowerCase();
 
-export default function App() {
+function FixtureApp() {
   const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
   const [timeZone, setTimeZone] = useState(browserTimeZone);
   const [activeFilter, setActiveFilter] = useState<FixtureFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBayernPlayer, setSelectedBayernPlayer] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [onlineState, setOnlineState] = useState<PublicOnlineState>({
+    predictions: [],
+    draws: [],
+    updatedAt: new Date().toISOString(),
+  });
+
+  useEffect(() => {
+    fetchPublicOnlineState().then(setOnlineState);
+  }, []);
 
   const timeZoneOptions = useMemo(
     () => Array.from(new Set([browserTimeZone, ...baseTimeZones])),
     [browserTimeZone],
+  );
+
+  const matchViewModels = useMemo(
+    () => fixtures.map((fixture) => toMatchViewModel(fixture, timeZone)),
+    [timeZone],
+  );
+
+  const matchViewModelById = useMemo(
+    () => new Map(matchViewModels.map((match) => [match.id, match])),
+    [matchViewModels],
+  );
+
+  const lotteryDrawByMatchId = useMemo(
+    () => new Map(onlineState.draws.map((draw) => [draw.matchId, draw])),
+    [onlineState.draws],
+  );
+
+  const scoreByMatchId = useMemo(
+    () => new Map(matchViewModels.map((match) => [match.id, match.score])),
+    [matchViewModels],
+  );
+
+  const lotteryPredictionSnapshots = useMemo(
+    () => toLotteryPredictionSnapshots(onlineState.predictions, scoreByMatchId),
+    [onlineState.predictions, scoreByMatchId],
   );
 
   const selectedFixtures = useMemo(
@@ -126,6 +164,10 @@ export default function App() {
     setSelectedIds(new Set());
   };
 
+  const handlePredictionSubmit = async (input: SubmitPredictionInput) => {
+    setOnlineState(await submitOnlinePrediction(input));
+  };
+
   return (
     <main>
       <div className="site-notice">
@@ -171,13 +213,17 @@ export default function App() {
 
           {filteredFixtures.length > 0 ? (
             filteredFixtures.map((fixture) => {
-              const match = toMatchViewModel(fixture, timeZone);
+              const match = matchViewModelById.get(fixture.id) ?? toMatchViewModel(fixture, timeZone);
 
               return (
                 <MatchCard
                   key={fixture.id}
                   match={match}
                   selected={selectedIds.has(fixture.id)}
+                  lotteryDraw={lotteryDrawByMatchId.get(fixture.id)}
+                  lotteryPredictionSnapshots={lotteryPredictionSnapshots}
+                  onlinePredictions={onlineState.predictions}
+                  onPredictionSubmit={handlePredictionSubmit}
                   onToggle={toggleFixture}
                 />
               );
@@ -203,4 +249,10 @@ export default function App() {
       </footer>
     </main>
   );
+}
+
+export default function App() {
+  const isAdminRoute = window.location.pathname.replace(/\/$/, "") === "/admin";
+
+  return isAdminRoute ? <AdminApp /> : <FixtureApp />;
 }

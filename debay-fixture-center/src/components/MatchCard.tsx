@@ -1,11 +1,19 @@
 import { useState } from "react";
 import type { Importance, MatchEvent, MatchEventType, MatchViewModel } from "../types";
+import type { LotteryDraw, LotteryPredictionSnapshot } from "../lib/lottery/types";
+import type { OnlinePrediction, SubmitPredictionInput } from "../lib/online/types";
 import { JerseyGallery } from "./JerseyGallery";
+import { LotteryPanel } from "./lottery/LotteryPanel";
 import { MatchDetailsDropdown } from "./MatchDetailsDropdown";
+import { PredictionPanel } from "./prediction/PredictionPanel";
 
 type MatchCardProps = {
   match: MatchViewModel;
   selected: boolean;
+  lotteryDraw?: LotteryDraw;
+  lotteryPredictionSnapshots: LotteryPredictionSnapshot[];
+  onlinePredictions: OnlinePrediction[];
+  onPredictionSubmit: (input: SubmitPredictionInput) => Promise<void>;
   onToggle: (id: string) => void;
 };
 
@@ -102,7 +110,15 @@ const TeamEventColumn = ({
   </section>
 );
 
-export function MatchCard({ match, selected, onToggle }: MatchCardProps) {
+export function MatchCard({
+  match,
+  selected,
+  lotteryDraw,
+  lotteryPredictionSnapshots,
+  onlinePredictions,
+  onPredictionSubmit,
+  onToggle,
+}: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const fixture = match.fixture;
   const bayernPlayers = fixture.relatedBayernPlayers;
@@ -197,6 +213,18 @@ export function MatchCard({ match, selected, onToggle }: MatchCardProps) {
         awayTeam={match.awayTeam}
         lineups={match.lineups}
         officials={match.officials}
+      />
+
+      <PredictionPanel
+        match={match}
+        predictions={onlinePredictions}
+        onSubmit={onPredictionSubmit}
+      />
+
+      <LotteryPanel
+        match={match}
+        draw={lotteryDraw}
+        predictionSnapshots={lotteryPredictionSnapshots}
       />
     </article>
   );

@@ -1,0 +1,150 @@
+import { fixtures } from "../../src/data/fixtures";
+import { mockMatchDetails } from "../../src/data/mockMatchDetails";
+import { calculateEligibleParticipants } from "../../src/lib/lottery/calculateEligibleParticipants";
+import { defaultLotteryPrize } from "../../src/lib/lottery/mockLotteryData";
+import { runLotteryDraw } from "../../src/lib/lottery/runLotteryDraw";
+import type { LotteryEligibleMode, LotteryPredictionSnapshot } from "../../src/lib/lottery/types";
+import type { AdminDrawInput, OnlinePrediction } from "../../src/lib/online/types";
+import {
+  connectBlobs,
+  loadDraws,
+  loadPredictions,
+  saveDraws,
+} from "./_shared/blobStore";
+import { getHeader, jsonResponse, parseJsonBody } from "./_shared/http";
+
+type AdminActionBody =
+  | ({ action: "state" } & Record<string, unknown>)
+  | ({ action: "draw" } & AdminDrawInput);
+
+const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredictionSnapshot[] =>
+  predictions.map((prediction) => {
+    const score = mockMatchDetails[prediction.matchId]?.score;
+    const hasFinalScore = score?.home !== null && score?.away !== null;
+    const predictedOutcome =
+      prediction.homeScore > prediction.awayScore
+        ? "home"
+        : prediction.homeScore < prediction.awayScore
+          ? "away"
+          : "draw";
+    const actualOutcome =
+      hasFinalScore && score
+        ? score.home > score.away
+          ? "home"
+          : score.home < score.away
+            ? "away"
+            : "draw"
+        : null;
+
+    return {
+      matchId: prediction.matchId,
+      nickname: prediction.nickname,
+      homeScore: prediction.homeScore,
+      awayScore: prediction.awayScore,
+      isExactScoreHit: Boolean(
+        hasFinalScore &&
+          score &&
+          prediction.homeScore === score.home &&
+          prediction.awayScore === score.away,
+      ),
+      isOutcomeHit: Boolean(hasFinalScore && actualOutcome === predictedOutcome),
+    };
+  });
+
+const authorize = (headers: Record<string, string | undefined>) => {
+  const configuredPassword = process.env.ADMIN_PASSWORD;
+  const providedPassword = getHeader(headers, "x-admin-password");
+
+  if (!configuredPassword) {
+    return "Netlify 环境变量 ADMIN_PASSWORD 尚未配置";
+  }
+
+  if (!providedPassword || providedPassword !== configuredPassword) {
+    return "管理员密码不正确";
+  }
+
+  return null;
+};
+
+export const handler = async (event: {
+  blobs: string;
+  headers: Record<string, string | undefined>;
+  httpMethod: string;
+  body?: string | null;
+}) => {
+  if (event.httpMethod !== "POST") {
+    return jsonResponse(405, { message: "Method not allowed" });
+  }
+
+  const authError = authorize(event.headers);
+
+  if (authError) {
+    return jsonResponse(401, { message: authError });
+  }
+
+  try {
+    connectBlobs(event as { blobs: string; headers: Record<string, string> });
+
+    const body = parseJsonBody<AdminActionBody>(event.body);
+    const predictions = await loadPredictions();
+    const draws = await loadDraws();
+
+    if (body.action === "state") {
+      return jsonResponse(200, {
+        predictions,
+        draws,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (body.action !== "draw") {
+      return jsonResponse(400, { message: "未知管理员操作" });
+    }
+
+    const fixture = fixtures.find((item) => item.id === body.matchId);
+
+    if (!fixture) {
+      return jsonResponse(404, { message: "未找到比赛" });
+    }
+
+    const existingDraw = draws.find((draw) => draw.matchId === body.matchId);
+
+    if (existingDraw) {
+      return jsonResponse(409, { message: "本场已经抽过奖，结果已锁定" });
+    }
+
+    const eligibleMode = (body.eligibleMode || "allParticipants") as LotteryEligibleMode;
+    const eligibleParticipants = calculateEligibleParticipants({
+      matchId: body.matchId,
+      eligibleMode,
+      predictions: toPredictionSnapshots(predictions),
+      manualList: body.manualList,
+    });
+
+    if (eligibleParticipants.length === 0) {
+      return jsonResponse(400, { message: "当前规则下没有可抽奖候选人" });
+    }
+
+    const draw = runLotteryDraw({
+      matchId: body.matchId,
+      prize: defaultLotteryPrize,
+      eligibleMode,
+      eligibleParticipants,
+      winnerCount: body.winnerCount,
+      createdBy: "netlify-admin",
+    });
+    const nextDraws = [...draws, draw];
+
+    await saveDraws(nextDraws);
+
+    return jsonResponse(200, {
+      predictions,
+      draws: nextDraws,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    return jsonResponse(400, {
+      message: error instanceof Error ? error.message : "管理员操作失败",
+    });
+  }
+};
