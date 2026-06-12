@@ -10,7 +10,7 @@ export const connectBlobs = (event: { blobs: string; headers: Record<string, str
   connectLambda(event);
 };
 
-const getFixtureStore = () => getStore(storeName);
+const getFixtureStore = () => getStore(storeName, { consistency: "eventual" });
 
 export const loadPredictions = async (): Promise<OnlinePrediction[]> => {
   const data = await getFixtureStore().get(predictionsKey, { type: "json" });
