@@ -13,33 +13,23 @@ export const connectBlobs = (event: { blobs: string; headers: Record<string, str
 const getFixtureStore = () => getStore(storeName);
 
 export const loadPredictions = async (): Promise<OnlinePrediction[]> => {
-  const data = await getFixtureStore().get(predictionsKey, {
-    consistency: "strong",
-    type: "json",
-  });
+  const data = await getFixtureStore().get(predictionsKey, { type: "json" });
 
   return Array.isArray(data) ? (data as OnlinePrediction[]) : [];
 };
 
 export const savePredictions = async (predictions: OnlinePrediction[]) => {
-  await getFixtureStore().setJSON(predictionsKey, predictions, {
-    consistency: "strong",
-  });
+  await getFixtureStore().setJSON(predictionsKey, predictions);
 };
 
 export const loadDraws = async (): Promise<LotteryDraw[]> => {
-  const data = await getFixtureStore().get(drawsKey, {
-    consistency: "strong",
-    type: "json",
-  });
+  const data = await getFixtureStore().get(drawsKey, { type: "json" });
 
   return Array.isArray(data) ? (data as LotteryDraw[]) : [];
 };
 
 export const saveDraws = async (draws: LotteryDraw[]) => {
-  await getFixtureStore().setJSON(drawsKey, draws, {
-    consistency: "strong",
-  });
+  await getFixtureStore().setJSON(drawsKey, draws);
 };
 
 export const loadPublicState = async (): Promise<PublicOnlineState> => ({
