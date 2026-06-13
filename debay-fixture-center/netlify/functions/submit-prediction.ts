@@ -4,6 +4,7 @@ import {
   connectBlobs,
   loadDraws,
   loadPredictions,
+  loadPredictionConfigs,
   savePredictions,
 } from "./_shared/blobStore";
 import { jsonResponse, parseJsonBody } from "./_shared/http";
@@ -40,6 +41,15 @@ export const handler = async (event: {
       return jsonResponse(404, { message: "未找到比赛" });
     }
 
+    const predictionConfigs = await loadPredictionConfigs();
+    const predictionConfig = predictionConfigs.find(
+      (config) => config.matchId === fixture.id && config.enabled,
+    );
+
+    if (!predictionConfig) {
+      return jsonResponse(403, { message: "本场未开放竞猜" });
+    }
+
     if (Date.now() >= new Date(fixture.kickoffUtc).getTime()) {
       return jsonResponse(403, { message: "本场竞猜已截止" });
     }
@@ -59,29 +69,29 @@ export const handler = async (event: {
         prediction.matchId === fixture.id &&
         normalizeNickname(prediction.nickname) === normalizeNickname(nickname),
     );
+    if (existingPrediction) {
+      return jsonResponse(409, {
+        message: "同一昵称本场已经提交过竞猜，重复提交已作废。",
+      });
+    }
+
     const nextPrediction: OnlinePrediction = {
-      id: existingPrediction?.id ?? `prediction-${fixture.id}-${encodeURIComponent(nickname)}`,
+      id: `prediction-${fixture.id}-${encodeURIComponent(nickname)}`,
       matchId: fixture.id,
       nickname,
       homeScore,
       awayScore,
-      createdAt: existingPrediction?.createdAt ?? now,
+      createdAt: now,
       updatedAt: now,
     };
-    const nextPredictions = [
-      ...predictions.filter(
-        (prediction) =>
-          prediction.matchId !== fixture.id ||
-          normalizeNickname(prediction.nickname) !== normalizeNickname(nickname),
-      ),
-      nextPrediction,
-    ];
+    const nextPredictions = [...predictions, nextPrediction];
 
     await savePredictions(nextPredictions);
 
     return jsonResponse(200, {
       predictions: nextPredictions,
       draws: await loadDraws(),
+      predictionConfigs,
       updatedAt: now,
     });
   } catch (error) {

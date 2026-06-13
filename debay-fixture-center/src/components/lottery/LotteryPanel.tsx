@@ -1,22 +1,24 @@
 import type { MatchViewModel } from "../../types";
 import { calculateEligibleParticipants } from "../../lib/lottery/calculateEligibleParticipants";
-import {
-  defaultEligibleMode,
-  defaultLotteryPrize,
-  lotteryEligibleModeLabels,
-} from "../../lib/lottery/mockLotteryData";
-import type { LotteryDraw, LotteryPredictionSnapshot } from "../../lib/lottery/types";
+import { lotteryEligibleModeLabels } from "../../lib/lottery/mockLotteryData";
+import type {
+  LotteryDraw,
+  LotteryPredictionSnapshot,
+  PredictionMatchConfig,
+} from "../../lib/lottery/types";
 import { LotteryPrizeCard } from "./LotteryPrizeCard";
 import { LotteryWinnerList } from "./LotteryWinnerList";
 
 type LotteryPanelProps = {
   match: MatchViewModel;
+  predictionConfig: PredictionMatchConfig;
   draw?: LotteryDraw;
   predictionSnapshots: LotteryPredictionSnapshot[];
 };
 
 export function LotteryPanel({
   match,
+  predictionConfig,
   draw,
   predictionSnapshots,
 }: LotteryPanelProps) {
@@ -26,11 +28,11 @@ export function LotteryPanel({
 
   const eligibleParticipants = calculateEligibleParticipants({
     matchId: match.id,
-    eligibleMode: defaultEligibleMode,
+    eligibleMode: predictionConfig.eligibleMode,
     predictions: predictionSnapshots,
   });
   const participantCount = draw?.eligibleParticipants.length ?? eligibleParticipants.length;
-  const eligibleMode = draw?.eligibleMode ?? defaultEligibleMode;
+  const eligibleMode = draw?.eligibleMode ?? predictionConfig.eligibleMode;
   return (
     <section className="lottery-panel" aria-label={`${match.homeTeam.name} 对 ${match.awayTeam.name} 抽奖`}>
       <div className="lottery-panel__header">
@@ -43,7 +45,7 @@ export function LotteryPanel({
         </span>
       </div>
 
-      <LotteryPrizeCard prize={defaultLotteryPrize} />
+      <LotteryPrizeCard prize={predictionConfig.prize} />
 
       {draw ? (
         <LotteryWinnerList draw={draw} />

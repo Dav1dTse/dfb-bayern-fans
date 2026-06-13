@@ -10,6 +10,7 @@ import { TimezoneSelector } from "./components/TimezoneSelector";
 import { baseTimeZones, fixtures } from "./data/fixtures";
 import { toMatchViewModel } from "./data/matchDataAdapter";
 import { fetchPublicOnlineState, submitOnlinePrediction } from "./lib/online/apiClient";
+import { defaultPredictionMatchConfigs } from "./lib/lottery/mockLotteryData";
 import { toLotteryPredictionSnapshots } from "./lib/online/predictionSnapshots";
 import type { PublicOnlineState, SubmitPredictionInput } from "./lib/online/types";
 import type { Fixture, FixtureFilter } from "./types";
@@ -44,6 +45,7 @@ function FixtureApp() {
   const [onlineState, setOnlineState] = useState<PublicOnlineState>({
     predictions: [],
     draws: [],
+    predictionConfigs: defaultPredictionMatchConfigs,
     updatedAt: new Date().toISOString(),
   });
 
@@ -69,6 +71,16 @@ function FixtureApp() {
   const lotteryDrawByMatchId = useMemo(
     () => new Map(onlineState.draws.map((draw) => [draw.matchId, draw])),
     [onlineState.draws],
+  );
+
+  const predictionConfigByMatchId = useMemo(
+    () =>
+      new Map(
+        onlineState.predictionConfigs
+          .filter((config) => config.enabled)
+          .map((config) => [config.matchId, config]),
+      ),
+    [onlineState.predictionConfigs],
   );
 
   const scoreByMatchId = useMemo(
@@ -221,6 +233,7 @@ function FixtureApp() {
                   match={match}
                   selected={selectedIds.has(fixture.id)}
                   lotteryDraw={lotteryDrawByMatchId.get(fixture.id)}
+                  predictionConfig={predictionConfigByMatchId.get(fixture.id)}
                   lotteryPredictionSnapshots={lotteryPredictionSnapshots}
                   onlinePredictions={onlineState.predictions}
                   onPredictionSubmit={handlePredictionSubmit}

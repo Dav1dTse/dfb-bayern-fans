@@ -1,21 +1,35 @@
 import { fixtures } from "../../src/data/fixtures";
 import { mockMatchDetails } from "../../src/data/mockMatchDetails";
 import { calculateEligibleParticipants } from "../../src/lib/lottery/calculateEligibleParticipants";
-import { defaultLotteryPrize } from "../../src/lib/lottery/mockLotteryData";
+import { defaultEligibleMode } from "../../src/lib/lottery/mockLotteryData";
 import { runLotteryDraw } from "../../src/lib/lottery/runLotteryDraw";
-import type { LotteryEligibleMode, LotteryPredictionSnapshot } from "../../src/lib/lottery/types";
-import type { AdminDrawInput, OnlinePrediction } from "../../src/lib/online/types";
+import type {
+  LotteryEligibleMode,
+  LotteryPredictionSnapshot,
+  PredictionMatchConfig,
+} from "../../src/lib/lottery/types";
+import type { AdminDrawInput, AdminPredictionConfigInput, OnlinePrediction } from "../../src/lib/online/types";
 import {
   connectBlobs,
   loadDraws,
   loadPredictions,
+  loadPredictionConfigs,
   saveDraws,
+  savePredictionConfigs,
 } from "./_shared/blobStore";
 import { getHeader, jsonResponse, parseJsonBody } from "./_shared/http";
 
 type AdminActionBody =
   | ({ action: "state" } & Record<string, unknown>)
-  | ({ action: "draw" } & AdminDrawInput);
+  | ({ action: "draw" } & AdminDrawInput)
+  | ({ action: "savePredictionConfigs" } & AdminPredictionConfigInput);
+
+const eligibleModes: LotteryEligibleMode[] = [
+  "allParticipants",
+  "outcomeWinners",
+  "exactScoreWinners",
+  "manualList",
+];
 
 const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredictionSnapshot[] =>
   predictions.map((prediction) => {
@@ -66,6 +80,61 @@ const authorize = (headers: Record<string, string | undefined>) => {
   return null;
 };
 
+const toPositiveInteger = (value: unknown, fallback: number): number => {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.floor(numberValue));
+};
+
+const sanitizePredictionConfigs = (
+  configs: PredictionMatchConfig[],
+): PredictionMatchConfig[] => {
+  const seenMatchIds = new Set<string>();
+
+  return configs
+    .map((config) => {
+      const fixture = fixtures.find((item) => item.id === config.matchId);
+
+      if (!fixture || seenMatchIds.has(config.matchId)) {
+        return null;
+      }
+
+      seenMatchIds.add(config.matchId);
+
+      const prizeName = config.prize?.name?.trim();
+      const sponsor = config.prize?.sponsor?.trim();
+
+      if (!prizeName || !sponsor) {
+        throw new Error("奖品名称和 sponsor 不能为空");
+      }
+
+      return {
+        matchId: config.matchId,
+        enabled: Boolean(config.enabled),
+        eligibleMode: eligibleModes.includes(config.eligibleMode)
+          ? config.eligibleMode
+          : defaultEligibleMode,
+        winnerCount: toPositiveInteger(config.winnerCount, 1),
+        prize: {
+          id:
+            config.prize.id?.trim() ||
+            `prize-${config.matchId}-${prizeName.toLowerCase().replace(/\s+/g, "-")}`,
+          name: prizeName,
+          description: config.prize.description?.trim() || "本场竞猜参与者赛后抽奖。",
+          sponsor,
+          image: config.prize.image?.trim() || undefined,
+          quantity: toPositiveInteger(config.prize.quantity, 1),
+          note: config.prize.note?.trim() || undefined,
+        },
+      };
+    })
+    .filter((config): config is PredictionMatchConfig => Boolean(config));
+};
+
 export const handler = async (event: {
   blobs: string;
   headers: Record<string, string | undefined>;
@@ -88,11 +157,26 @@ export const handler = async (event: {
     const body = parseJsonBody<AdminActionBody>(event.body);
     const predictions = await loadPredictions();
     const draws = await loadDraws();
+    const predictionConfigs = await loadPredictionConfigs();
 
     if (body.action === "state") {
       return jsonResponse(200, {
         predictions,
         draws,
+        predictionConfigs,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (body.action === "savePredictionConfigs") {
+      const nextPredictionConfigs = sanitizePredictionConfigs(body.predictionConfigs);
+
+      await savePredictionConfigs(nextPredictionConfigs);
+
+      return jsonResponse(200, {
+        predictions,
+        draws,
+        predictionConfigs: nextPredictionConfigs,
         updatedAt: new Date().toISOString(),
       });
     }
@@ -113,7 +197,15 @@ export const handler = async (event: {
       return jsonResponse(409, { message: "本场已经抽过奖，结果已锁定" });
     }
 
-    const eligibleMode = (body.eligibleMode || "allParticipants") as LotteryEligibleMode;
+    const predictionConfig = predictionConfigs.find(
+      (config) => config.matchId === body.matchId && config.enabled,
+    );
+
+    if (!predictionConfig) {
+      return jsonResponse(403, { message: "本场未开启竞猜抽奖" });
+    }
+
+    const eligibleMode = (body.eligibleMode || predictionConfig.eligibleMode) as LotteryEligibleMode;
     const eligibleParticipants = calculateEligibleParticipants({
       matchId: body.matchId,
       eligibleMode,
@@ -127,10 +219,10 @@ export const handler = async (event: {
 
     const draw = runLotteryDraw({
       matchId: body.matchId,
-      prize: defaultLotteryPrize,
+      prize: predictionConfig.prize,
       eligibleMode,
       eligibleParticipants,
-      winnerCount: body.winnerCount,
+      winnerCount: body.winnerCount || predictionConfig.winnerCount,
       createdBy: "netlify-admin",
     });
     const nextDraws = [...draws, draw];
@@ -140,6 +232,7 @@ export const handler = async (event: {
     return jsonResponse(200, {
       predictions,
       draws: nextDraws,
+      predictionConfigs,
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {

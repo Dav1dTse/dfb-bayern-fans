@@ -1,15 +1,60 @@
-import type { LotteryEligibleMode, LotteryPredictionSnapshot, LotteryPrize } from "./types";
+import type {
+  LotteryEligibleMode,
+  LotteryPredictionSnapshot,
+  LotteryPrize,
+  PredictionMatchConfig,
+} from "./types";
 
-export const defaultLotteryPrize: LotteryPrize = {
-  id: "bayern-signed-photo",
-  name: "拜仁一线队球员签名照片",
-  description: "世界杯竞猜活动本场加码奖品，适合赛后在群内公布中奖名单。",
+export const elberSignedPhotoPrize: LotteryPrize = {
+  id: "elber-signed-photo",
+  name: "埃尔博签名照",
+  description: "拜仁传奇 Giovane Elber 签名照片，本场竞猜参与者赛后抽奖。",
   sponsor: "七月早天",
+  image: "/prizes/elber-signed-photo.jpg",
   quantity: 1,
   note: "奖品发放方式由群管理员线下确认。",
 };
 
+export const kaneSignedPhotoPrize: LotteryPrize = {
+  id: "kane-signed-photo",
+  name: "凯恩签名照",
+  description: "英格兰与拜仁前锋 Harry Kane 签名照片，本场竞猜参与者赛后抽奖。",
+  sponsor: "七月早天",
+  image: "/prizes/kane-signed-photo.jpg",
+  quantity: 1,
+  note: "奖品发放方式由群管理员线下确认。",
+};
+
+export const defaultLotteryPrize: LotteryPrize = elberSignedPhotoPrize;
+
 export const defaultEligibleMode: LotteryEligibleMode = "allParticipants";
+
+export const defaultPredictionMatchConfigs: PredictionMatchConfig[] = [
+  {
+    matchId: "m56",
+    enabled: true,
+    prize: elberSignedPhotoPrize,
+    eligibleMode: defaultEligibleMode,
+    winnerCount: 1,
+  },
+  {
+    matchId: "m7",
+    enabled: true,
+    prize: {
+      ...elberSignedPhotoPrize,
+      id: "elber-signed-photo-brazil-morocco",
+    },
+    eligibleMode: defaultEligibleMode,
+    winnerCount: 1,
+  },
+  {
+    matchId: "m22",
+    enabled: true,
+    prize: kaneSignedPhotoPrize,
+    eligibleMode: defaultEligibleMode,
+    winnerCount: 1,
+  },
+];
 
 export const lotteryEligibleModeLabels: Record<LotteryEligibleMode, string> = {
   allParticipants: "所有参与本场竞猜的人",

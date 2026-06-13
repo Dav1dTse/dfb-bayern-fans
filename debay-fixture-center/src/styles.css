@@ -1642,6 +1642,43 @@ main {
   color: var(--red-dark);
 }
 
+.prediction-prize {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(226, 220, 207, 0.9);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.prediction-prize img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(21, 21, 21, 0.08);
+}
+
+.prediction-prize div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.prediction-prize span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.prediction-prize strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 1000;
+}
+
 .prediction-form {
   display: grid;
   grid-template-columns: minmax(170px, 1fr) auto auto;
@@ -1813,6 +1850,14 @@ main {
   font-size: 12px;
   font-weight: 1000;
   box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.76);
+}
+
+.lottery-prize-card__image {
+  width: 58px;
+  height: 74px;
+  border-radius: 8px;
+  object-fit: cover;
+  box-shadow: 0 8px 16px rgba(21, 21, 21, 0.14);
 }
 
 .lottery-prize-card__body {
@@ -2220,6 +2265,7 @@ main {
   position: static;
 }
 
+.prediction-config-panel,
 .lottery-admin-panel {
   border: 1px solid rgba(221, 215, 202, 0.96);
   border-radius: 8px;
@@ -2228,6 +2274,112 @@ main {
     linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.88)),
     repeating-linear-gradient(135deg, rgba(237, 0, 56, 0.06) 0 16px, rgba(40, 108, 253, 0.05) 16px 32px);
   box-shadow: var(--shadow);
+}
+
+.prediction-config-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.prediction-config-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(226, 220, 207, 0.9);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.prediction-config-card__top,
+.prediction-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.prediction-config-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 1000;
+}
+
+.prediction-config-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red);
+}
+
+.prediction-config-card__top button,
+.prediction-config-actions button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(215, 25, 32, 0.22);
+  border-radius: 8px;
+  padding: 8px 11px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--red-dark);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.prediction-config-actions {
+  margin-top: 14px;
+}
+
+.prediction-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prediction-config-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.prediction-config-card input,
+.prediction-config-card select,
+.prediction-config-card textarea {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 10px;
+  outline: 0;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.prediction-config-card textarea {
+  min-height: 78px;
+  resize: vertical;
+}
+
+.prediction-config-card input:focus,
+.prediction-config-card select:focus,
+.prediction-config-card textarea:focus {
+  border-color: rgba(23, 44, 88, 0.45);
+  box-shadow: 0 0 0 4px rgba(23, 44, 88, 0.08);
+}
+
+.prediction-config-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .lottery-admin-login,
@@ -2479,7 +2631,7 @@ main {
 
 .admin-dashboard__summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
@@ -2886,6 +3038,11 @@ main {
     height: 48px;
   }
 
+  .lottery-prize-card__image {
+    width: 48px;
+    height: 62px;
+  }
+
   .lottery-prize-card__quantity {
     grid-column: 1 / -1;
     width: fit-content;
@@ -2896,6 +3053,22 @@ main {
   .lottery-admin-candidates > div:first-child {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .prediction-config-grid,
+  .prediction-config-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .prediction-config-card__top,
+  .prediction-config-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prediction-config-card__top button,
+  .prediction-config-actions button {
+    width: 100%;
   }
 
   .lineup-grid {

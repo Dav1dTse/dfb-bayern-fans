@@ -3,14 +3,13 @@ import type { MatchViewModel } from "../../types";
 import { calculateEligibleParticipants } from "../../lib/lottery/calculateEligibleParticipants";
 import {
   defaultEligibleMode,
-  defaultLotteryPrize,
   lotteryEligibleModeLabels,
 } from "../../lib/lottery/mockLotteryData";
 import type {
   LotteryDraw,
   LotteryEligibleMode,
   LotteryPredictionSnapshot,
-  LotteryPrize,
+  PredictionMatchConfig,
 } from "../../lib/lottery/types";
 import type { AdminDrawInput } from "../../lib/online/types";
 import { LotteryDrawButton } from "./LotteryDrawButton";
@@ -20,13 +19,13 @@ import { LotteryWinnerList } from "./LotteryWinnerList";
 type LotteryAdminPanelProps = {
   matches: MatchViewModel[];
   draws: LotteryDraw[];
+  predictionConfigs: PredictionMatchConfig[];
   predictionSnapshots: LotteryPredictionSnapshot[];
   adminMessage: string;
   isBusy: boolean;
   onDrawRequested: (input: AdminDrawInput) => Promise<void>;
 };
 
-const prizes: LotteryPrize[] = [defaultLotteryPrize];
 const eligibleModes: LotteryEligibleMode[] = [
   "allParticipants",
   "outcomeWinners",
@@ -43,21 +42,37 @@ const parseManualList = (value: string): string[] =>
 export function LotteryAdminPanel({
   matches,
   draws,
+  predictionConfigs,
   predictionSnapshots,
   adminMessage,
   isBusy,
   onDrawRequested,
 }: LotteryAdminPanelProps) {
-  const firstFinishedMatch = matches.find((match) => match.status === "finished") ?? matches[0];
+  const enabledPredictionConfigs = useMemo(
+    () => predictionConfigs.filter((config) => config.enabled),
+    [predictionConfigs],
+  );
+  const enabledMatchIds = useMemo(
+    () => new Set(enabledPredictionConfigs.map((config) => config.matchId)),
+    [enabledPredictionConfigs],
+  );
+  const enabledMatches = useMemo(
+    () => matches.filter((match) => enabledMatchIds.has(match.id)),
+    [enabledMatchIds, matches],
+  );
+  const firstFinishedMatch =
+    enabledMatches.find((match) => match.status === "finished") ?? enabledMatches[0];
   const [selectedMatchId, setSelectedMatchId] = useState(firstFinishedMatch?.id ?? "");
-  const [selectedPrizeId, setSelectedPrizeId] = useState(defaultLotteryPrize.id);
   const [eligibleMode, setEligibleMode] = useState<LotteryEligibleMode>(defaultEligibleMode);
   const [winnerCount, setWinnerCount] = useState(1);
   const [manualListInput, setManualListInput] = useState("");
   const [showAllCandidates, setShowAllCandidates] = useState(false);
 
-  const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? firstFinishedMatch;
-  const selectedPrize = prizes.find((prize) => prize.id === selectedPrizeId) ?? defaultLotteryPrize;
+  const selectedMatch =
+    enabledMatches.find((match) => match.id === selectedMatchId) ?? firstFinishedMatch;
+  const selectedConfig = enabledPredictionConfigs.find(
+    (config) => config.matchId === selectedMatch?.id,
+  );
   const existingDraw = draws.find((draw) => draw.matchId === selectedMatch?.id);
   const manualList = useMemo(() => parseManualList(manualListInput), [manualListInput]);
   const eligibleParticipants = useMemo(() => {
@@ -75,6 +90,7 @@ export function LotteryAdminPanel({
 
   const canDraw =
     Boolean(selectedMatch) &&
+    Boolean(selectedConfig) &&
     selectedMatch?.status === "finished" &&
     !existingDraw &&
     eligibleParticipants.length > 0 &&
@@ -88,8 +104,23 @@ export function LotteryAdminPanel({
     setShowAllCandidates(false);
   }, [eligibleMode, manualListInput, selectedMatchId]);
 
+  useEffect(() => {
+    if (!selectedMatchId && firstFinishedMatch) {
+      setSelectedMatchId(firstFinishedMatch.id);
+    }
+  }, [firstFinishedMatch, selectedMatchId]);
+
+  useEffect(() => {
+    if (!selectedConfig) {
+      return;
+    }
+
+    setEligibleMode(selectedConfig.eligibleMode);
+    setWinnerCount(selectedConfig.winnerCount);
+  }, [selectedConfig]);
+
   const handleDraw = async () => {
-    if (!selectedMatch || existingDraw || eligibleParticipants.length === 0) {
+    if (!selectedMatch || !selectedConfig || existingDraw || eligibleParticipants.length === 0) {
       return;
     }
 
@@ -122,14 +153,20 @@ export function LotteryAdminPanel({
         <span className="selected-count">{draws.length}</span>
       </div>
 
-      <div className="lottery-admin-form">
+      {enabledMatches.length === 0 ? (
+        <div className="lottery-admin-candidates">
+          <strong>暂无已开启竞猜的比赛</strong>
+          <p>请先在“场次与奖品”里开启至少一场竞猜。</p>
+        </div>
+      ) : (
+        <div className="lottery-admin-form">
           <label>
             比赛
             <select
               value={selectedMatch?.id ?? ""}
               onChange={(event) => setSelectedMatchId(event.target.value)}
             >
-              {matches.map((match) => (
+              {enabledMatches.map((match) => (
                 <option value={match.id} key={match.id}>
                   {match.fixture.matchNumber ? `${match.fixture.matchNumber} · ` : ""}
                   {match.homeTeam.name} vs {match.awayTeam.name} · {match.statusLabel}
@@ -138,18 +175,7 @@ export function LotteryAdminPanel({
             </select>
           </label>
 
-          <label>
-            奖品
-            <select value={selectedPrizeId} onChange={(event) => setSelectedPrizeId(event.target.value)}>
-              {prizes.map((prize) => (
-                <option value={prize.id} key={prize.id}>
-                  {prize.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <LotteryPrizeCard prize={selectedPrize} />
+          {selectedConfig && <LotteryPrizeCard prize={selectedConfig.prize} />}
 
           <label>
             资格规则
@@ -227,6 +253,7 @@ export function LotteryAdminPanel({
             {existingDraw ? "本场已经抽过奖，结果已锁定。" : adminMessage}
           </p>
         </div>
+      )}
     </aside>
   );
 }

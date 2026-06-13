@@ -8,9 +8,13 @@ type LotteryPrizeCardProps = {
 export function LotteryPrizeCard({ prize }: LotteryPrizeCardProps) {
   return (
     <div className="lottery-prize-card">
-      <div className="lottery-prize-card__mark" aria-hidden="true">
-        FCB
-      </div>
+      {prize.image ? (
+        <img className="lottery-prize-card__image" src={prize.image} alt={prize.name} loading="lazy" />
+      ) : (
+        <div className="lottery-prize-card__mark" aria-hidden="true">
+          FCB
+        </div>
+      )}
       <div className="lottery-prize-card__body">
         <span className="section-caption">奖品</span>
         <strong>{prize.name}</strong>

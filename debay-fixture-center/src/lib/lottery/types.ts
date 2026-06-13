@@ -14,6 +14,14 @@ export type LotteryPrize = {
   note?: string;
 };
 
+export type PredictionMatchConfig = {
+  matchId: string;
+  enabled: boolean;
+  prize: LotteryPrize;
+  eligibleMode: LotteryEligibleMode;
+  winnerCount: number;
+};
+
 export type LotteryPredictionSnapshot = {
   matchId: string;
   nickname: string;

@@ -1,9 +1,12 @@
 import { type FormEvent, useMemo, useState } from "react";
 import type { MatchViewModel } from "../../types";
 import type { OnlinePrediction, SubmitPredictionInput } from "../../lib/online/types";
+import type { PredictionMatchConfig } from "../../lib/lottery/types";
+import { SponsorBadge } from "../lottery/SponsorBadge";
 
 type PredictionPanelProps = {
   match: MatchViewModel;
+  predictionConfig: PredictionMatchConfig;
   predictions: OnlinePrediction[];
   onSubmit: (input: SubmitPredictionInput) => Promise<void>;
 };
@@ -28,7 +31,12 @@ const saveNickname = (nickname: string) => {
 
 const normalizeNickname = (nickname: string): string => nickname.trim().toLowerCase();
 
-export function PredictionPanel({ match, predictions, onSubmit }: PredictionPanelProps) {
+export function PredictionPanel({
+  match,
+  predictionConfig,
+  predictions,
+  onSubmit,
+}: PredictionPanelProps) {
   const matchPredictions = useMemo(
     () => predictions.filter((prediction) => prediction.matchId === match.id),
     [match.id, predictions],
@@ -36,12 +44,13 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
   const [nickname, setNickname] = useState(() => loadNickname());
   const [homeScore, setHomeScore] = useState("1");
   const [awayScore, setAwayScore] = useState("0");
-  const [message, setMessage] = useState("同一场同一昵称只保留一条竞猜，可在开赛前覆盖修改。");
+  const [message, setMessage] = useState("同一场同一昵称只接受首次提交，重复提交不会覆盖。");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const trimmedNickname = nickname.trim();
   const existingPrediction = matchPredictions.find(
     (prediction) => normalizeNickname(prediction.nickname) === normalizeNickname(trimmedNickname),
   );
+  const hasExistingPrediction = Boolean(existingPrediction);
   const isClosed = Date.now() >= new Date(match.fixture.kickoffUtc).getTime();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -49,6 +58,11 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
 
     if (isClosed) {
       setMessage("本场竞猜已截止。");
+      return;
+    }
+
+    if (hasExistingPrediction) {
+      setMessage("你已提交过本场竞猜，重复提交已作废。");
       return;
     }
 
@@ -66,7 +80,7 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
         awayScore: Number(awayScore),
       });
       saveNickname(trimmedNickname);
-      setMessage(existingPrediction ? "已覆盖你此前的竞猜。" : "你已提交，本场抽奖资格会自动计入。");
+      setMessage("你已提交，本场抽奖资格会自动计入。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "提交失败，请稍后再试。");
     } finally {
@@ -84,6 +98,17 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
         <span className={isClosed ? "prediction-status is-closed" : "prediction-status"}>
           {isClosed ? "已截止" : "可参与"}
         </span>
+      </div>
+
+      <div className="prediction-prize">
+        {predictionConfig.prize.image && (
+          <img src={predictionConfig.prize.image} alt={predictionConfig.prize.name} loading="lazy" />
+        )}
+        <div>
+          <span>本场竞猜奖品</span>
+          <strong>{predictionConfig.prize.name}</strong>
+          <SponsorBadge sponsor={predictionConfig.prize.sponsor} />
+        </div>
       </div>
 
       <form className="prediction-form" onSubmit={handleSubmit}>
@@ -106,7 +131,7 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
               min={0}
               max={20}
               value={homeScore}
-              disabled={isClosed || isSubmitting}
+              disabled={isClosed || isSubmitting || hasExistingPrediction}
               onChange={(event) => setHomeScore(event.target.value)}
             />
           </label>
@@ -118,14 +143,18 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
               min={0}
               max={20}
               value={awayScore}
-              disabled={isClosed || isSubmitting}
+              disabled={isClosed || isSubmitting || hasExistingPrediction}
               onChange={(event) => setAwayScore(event.target.value)}
             />
           </label>
         </div>
 
-        <button type="submit" className="prediction-submit-button" disabled={isClosed || isSubmitting}>
-          {isClosed ? "竞猜已截止" : existingPrediction ? "修改竞猜" : "提交竞猜"}
+        <button
+          type="submit"
+          className="prediction-submit-button"
+          disabled={isClosed || isSubmitting || hasExistingPrediction}
+        >
+          {isClosed ? "竞猜已截止" : hasExistingPrediction ? "已提交" : "提交竞猜"}
         </button>
       </form>
 
@@ -137,7 +166,13 @@ export function PredictionPanel({ match, predictions, onSubmit }: PredictionPane
           </strong>
         )}
       </div>
-      <p>{isClosed ? "开赛后竞猜入口锁定，抽奖候选来自已提交昵称。" : message}</p>
+      <p>
+        {isClosed
+          ? "开赛后竞猜入口锁定，抽奖候选来自已提交昵称。"
+          : hasExistingPrediction
+            ? "同一昵称本场只能提交一次，请勿重复填写。"
+            : message}
+      </p>
     </section>
   );
 }

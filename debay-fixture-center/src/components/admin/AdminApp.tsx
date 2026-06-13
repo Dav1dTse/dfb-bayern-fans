@@ -1,10 +1,20 @@
 import { useMemo, useState } from "react";
+import { PredictionConfigPanel } from "./PredictionConfigPanel";
 import { LotteryAdminPanel } from "../lottery/LotteryAdminPanel";
 import { baseTimeZones, fixtures } from "../../data/fixtures";
 import { toMatchViewModel } from "../../data/matchDataAdapter";
-import { fetchAdminOnlineState, runAdminOnlineDraw } from "../../lib/online/apiClient";
+import { defaultPredictionMatchConfigs } from "../../lib/lottery/mockLotteryData";
+import {
+  fetchAdminOnlineState,
+  runAdminOnlineDraw,
+  saveAdminPredictionConfigs,
+} from "../../lib/online/apiClient";
 import { toLotteryPredictionSnapshots } from "../../lib/online/predictionSnapshots";
-import type { AdminDrawInput, AdminOnlineState } from "../../lib/online/types";
+import type {
+  AdminDrawInput,
+  AdminOnlineState,
+  AdminPredictionConfigInput,
+} from "../../lib/online/types";
 import { getBrowserTimeZone } from "../../utils/time";
 
 export function AdminApp() {
@@ -16,6 +26,7 @@ export function AdminApp() {
   const [state, setState] = useState<AdminOnlineState>({
     predictions: [],
     draws: [],
+    predictionConfigs: defaultPredictionMatchConfigs,
     updatedAt: new Date().toISOString(),
   });
   const matches = useMemo(
@@ -53,6 +64,19 @@ export function AdminApp() {
       setMessage("抽奖完成，结果已保存到 Netlify Blobs。");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "抽奖失败");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handlePredictionConfigsSave = async (input: AdminPredictionConfigInput) => {
+    try {
+      setIsBusy(true);
+      const nextState = await saveAdminPredictionConfigs(adminPassword, input);
+      setState(nextState);
+      setMessage("竞猜场次和奖品配置已保存。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "保存竞猜配置失败");
     } finally {
       setIsBusy(false);
     }
@@ -97,14 +121,26 @@ export function AdminApp() {
               <span>已开奖比赛</span>
             </div>
             <div>
+              <strong>{state.predictionConfigs.filter((config) => config.enabled).length}</strong>
+              <span>已开放竞猜</span>
+            </div>
+            <div>
               <strong>{new Date(state.updatedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</strong>
               <span>最近同步</span>
             </div>
           </div>
 
+          <PredictionConfigPanel
+            matches={matches}
+            predictionConfigs={state.predictionConfigs}
+            isBusy={isBusy}
+            onSave={handlePredictionConfigsSave}
+          />
+
           <LotteryAdminPanel
             matches={matches}
             draws={state.draws}
+            predictionConfigs={state.predictionConfigs}
             predictionSnapshots={predictionSnapshots}
             adminMessage={message}
             isBusy={isBusy}

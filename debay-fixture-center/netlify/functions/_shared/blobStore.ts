@@ -1,10 +1,12 @@
 import { connectLambda, getStore } from "@netlify/blobs";
-import type { LotteryDraw } from "../../../src/lib/lottery/types";
+import { defaultPredictionMatchConfigs } from "../../../src/lib/lottery/mockLotteryData";
+import type { LotteryDraw, PredictionMatchConfig } from "../../../src/lib/lottery/types";
 import type { OnlinePrediction, PublicOnlineState } from "../../../src/lib/online/types";
 
 const storeName = "debay-fixture-center";
 const predictionsKey = "predictions.json";
 const drawsKey = "lottery-draws.json";
+const predictionConfigsKey = "prediction-configs.json";
 
 export const connectBlobs = (event: { blobs: string; headers: Record<string, string> }) => {
   connectLambda(event);
@@ -32,8 +34,19 @@ export const saveDraws = async (draws: LotteryDraw[]) => {
   await getFixtureStore().setJSON(drawsKey, draws);
 };
 
+export const loadPredictionConfigs = async (): Promise<PredictionMatchConfig[]> => {
+  const data = await getFixtureStore().get(predictionConfigsKey, { type: "json" });
+
+  return Array.isArray(data) ? (data as PredictionMatchConfig[]) : defaultPredictionMatchConfigs;
+};
+
+export const savePredictionConfigs = async (predictionConfigs: PredictionMatchConfig[]) => {
+  await getFixtureStore().setJSON(predictionConfigsKey, predictionConfigs);
+};
+
 export const loadPublicState = async (): Promise<PublicOnlineState> => ({
   predictions: await loadPredictions(),
   draws: await loadDraws(),
+  predictionConfigs: await loadPredictionConfigs(),
   updatedAt: new Date().toISOString(),
 });

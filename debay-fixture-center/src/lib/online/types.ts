@@ -1,4 +1,4 @@
-import type { LotteryDraw, LotteryEligibleMode } from "../lottery/types";
+import type { LotteryDraw, LotteryEligibleMode, PredictionMatchConfig } from "../lottery/types";
 
 export type OnlinePrediction = {
   id: string;
@@ -13,6 +13,7 @@ export type OnlinePrediction = {
 export type PublicOnlineState = {
   predictions: OnlinePrediction[];
   draws: LotteryDraw[];
+  predictionConfigs: PredictionMatchConfig[];
   updatedAt: string;
 };
 
@@ -28,6 +29,10 @@ export type AdminDrawInput = {
   eligibleMode: LotteryEligibleMode;
   winnerCount: number;
   manualList?: string[];
+};
+
+export type AdminPredictionConfigInput = {
+  predictionConfigs: PredictionMatchConfig[];
 };
 
 export type AdminOnlineState = PublicOnlineState;

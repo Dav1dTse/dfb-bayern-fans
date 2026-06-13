@@ -1,6 +1,10 @@
 import { useState } from "react";
 import type { Importance, MatchEvent, MatchEventType, MatchViewModel } from "../types";
-import type { LotteryDraw, LotteryPredictionSnapshot } from "../lib/lottery/types";
+import type {
+  LotteryDraw,
+  LotteryPredictionSnapshot,
+  PredictionMatchConfig,
+} from "../lib/lottery/types";
 import type { OnlinePrediction, SubmitPredictionInput } from "../lib/online/types";
 import { JerseyGallery } from "./JerseyGallery";
 import { LotteryPanel } from "./lottery/LotteryPanel";
@@ -11,6 +15,7 @@ type MatchCardProps = {
   match: MatchViewModel;
   selected: boolean;
   lotteryDraw?: LotteryDraw;
+  predictionConfig?: PredictionMatchConfig;
   lotteryPredictionSnapshots: LotteryPredictionSnapshot[];
   onlinePredictions: OnlinePrediction[];
   onPredictionSubmit: (input: SubmitPredictionInput) => Promise<void>;
@@ -114,6 +119,7 @@ export function MatchCard({
   match,
   selected,
   lotteryDraw,
+  predictionConfig,
   lotteryPredictionSnapshots,
   onlinePredictions,
   onPredictionSubmit,
@@ -215,17 +221,23 @@ export function MatchCard({
         officials={match.officials}
       />
 
-      <PredictionPanel
-        match={match}
-        predictions={onlinePredictions}
-        onSubmit={onPredictionSubmit}
-      />
+      {predictionConfig && (
+        <>
+          <PredictionPanel
+            match={match}
+            predictionConfig={predictionConfig}
+            predictions={onlinePredictions}
+            onSubmit={onPredictionSubmit}
+          />
 
-      <LotteryPanel
-        match={match}
-        draw={lotteryDraw}
-        predictionSnapshots={lotteryPredictionSnapshots}
-      />
+          <LotteryPanel
+            match={match}
+            predictionConfig={predictionConfig}
+            draw={lotteryDraw}
+            predictionSnapshots={lotteryPredictionSnapshots}
+          />
+        </>
+      )}
     </article>
   );
 }
