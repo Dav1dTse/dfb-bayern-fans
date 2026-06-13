@@ -10,6 +10,7 @@ import { defaultPredictionMatchConfigs } from "../lottery/mockLotteryData";
 
 const defaultState = (): PublicOnlineState => ({
   predictions: [],
+  predictionCounts: [],
   draws: [],
   predictionConfigs: defaultPredictionMatchConfigs,
   updatedAt: new Date().toISOString(),
@@ -18,6 +19,7 @@ const defaultState = (): PublicOnlineState => ({
 const normalizeOnlineState = <T extends PublicOnlineState>(state: T): T => ({
   ...state,
   predictions: Array.isArray(state.predictions) ? state.predictions : [],
+  predictionCounts: Array.isArray(state.predictionCounts) ? state.predictionCounts : [],
   draws: Array.isArray(state.draws) ? state.draws : [],
   predictionConfigs: Array.isArray(state.predictionConfigs)
     ? state.predictionConfigs

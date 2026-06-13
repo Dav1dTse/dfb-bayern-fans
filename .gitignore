@@ -30,5 +30,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Local environment overrides
+.env
+.env.*
+!.env.example
+!debay-fixture-center/.env.example
 .env.local
 .env.*.local

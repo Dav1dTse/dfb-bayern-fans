@@ -25,6 +25,7 @@ export function AdminApp() {
   const [message, setMessage] = useState("请输入 Netlify 环境变量 ADMIN_PASSWORD 对应的管理员密码。");
   const [state, setState] = useState<AdminOnlineState>({
     predictions: [],
+    predictionCounts: [],
     draws: [],
     predictionConfigs: defaultPredictionMatchConfigs,
     updatedAt: new Date().toISOString(),

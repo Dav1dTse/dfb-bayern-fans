@@ -18,6 +18,7 @@ type MatchCardProps = {
   predictionConfig?: PredictionMatchConfig;
   lotteryPredictionSnapshots: LotteryPredictionSnapshot[];
   onlinePredictions: OnlinePrediction[];
+  predictionParticipantCount: number;
   onPredictionSubmit: (input: SubmitPredictionInput) => Promise<void>;
   onToggle: (id: string) => void;
 };
@@ -122,6 +123,7 @@ export function MatchCard({
   predictionConfig,
   lotteryPredictionSnapshots,
   onlinePredictions,
+  predictionParticipantCount,
   onPredictionSubmit,
   onToggle,
 }: MatchCardProps) {
@@ -227,6 +229,7 @@ export function MatchCard({
             match={match}
             predictionConfig={predictionConfig}
             predictions={onlinePredictions}
+            participantCount={predictionParticipantCount}
             onSubmit={onPredictionSubmit}
           />
 

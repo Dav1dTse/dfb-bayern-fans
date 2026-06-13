@@ -4,20 +4,28 @@ import { calculateEligibleParticipants } from "../../src/lib/lottery/calculateEl
 import { defaultEligibleMode } from "../../src/lib/lottery/mockLotteryData";
 import { runLotteryDraw } from "../../src/lib/lottery/runLotteryDraw";
 import type {
+  LotteryDraw,
   LotteryEligibleMode,
   LotteryPredictionSnapshot,
   PredictionMatchConfig,
 } from "../../src/lib/lottery/types";
 import type { AdminDrawInput, AdminPredictionConfigInput, OnlinePrediction } from "../../src/lib/online/types";
 import {
+  buildPredictionCounts,
   connectBlobs,
   loadDraws,
+  loadAdminAuthAttempts,
   loadPredictions,
   loadPredictionConfigs,
+  saveAdminAuthAttempts,
   saveDraws,
   savePredictionConfigs,
 } from "./_shared/blobStore";
 import { getHeader, jsonResponse, parseJsonBody } from "./_shared/http";
+
+declare const process: {
+  env: Record<string, string | undefined>;
+};
 
 type AdminActionBody =
   | ({ action: "state" } & Record<string, unknown>)
@@ -30,11 +38,17 @@ const eligibleModes: LotteryEligibleMode[] = [
   "exactScoreWinners",
   "manualList",
 ];
+const maxAuthFailures = 8;
+const authWindowMs = 15 * 60 * 1000;
+const authLockMs = 15 * 60 * 1000;
 
 const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredictionSnapshot[] =>
   predictions.map((prediction) => {
     const score = mockMatchDetails[prediction.matchId]?.score;
-    const hasFinalScore = score?.home !== null && score?.away !== null;
+    const finalHomeScore = score?.home;
+    const finalAwayScore = score?.away;
+    const hasFinalScore =
+      typeof finalHomeScore === "number" && typeof finalAwayScore === "number";
     const predictedOutcome =
       prediction.homeScore > prediction.awayScore
         ? "home"
@@ -42,10 +56,10 @@ const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredicti
           ? "away"
           : "draw";
     const actualOutcome =
-      hasFinalScore && score
-        ? score.home > score.away
+      hasFinalScore
+        ? finalHomeScore > finalAwayScore
           ? "home"
-          : score.home < score.away
+          : finalHomeScore < finalAwayScore
             ? "away"
             : "draw"
         : null;
@@ -57,9 +71,8 @@ const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredicti
       awayScore: prediction.awayScore,
       isExactScoreHit: Boolean(
         hasFinalScore &&
-          score &&
-          prediction.homeScore === score.home &&
-          prediction.awayScore === score.away,
+          prediction.homeScore === finalHomeScore &&
+          prediction.awayScore === finalAwayScore,
       ),
       isOutcomeHit: Boolean(hasFinalScore && actualOutcome === predictedOutcome),
     };
@@ -74,11 +87,42 @@ const authorize = (headers: Record<string, string | undefined>) => {
   }
 
   if (!providedPassword || providedPassword !== configuredPassword) {
-    return "管理员密码不正确";
+    return "管理员认证失败";
   }
 
   return null;
 };
+
+const getClientKey = (headers: Record<string, string | undefined>): string => {
+  const forwardedFor = getHeader(headers, "x-forwarded-for");
+  const clientIp =
+    getHeader(headers, "x-nf-client-connection-ip") ||
+    getHeader(headers, "client-ip") ||
+    forwardedFor?.split(",")[0]?.trim();
+
+  return clientIp || "unknown-client";
+};
+
+const isLocked = (lockedUntil: string | undefined, now: number): boolean =>
+  Boolean(lockedUntil && new Date(lockedUntil).getTime() > now);
+
+const getEnabledMatchIds = (predictionConfigs: PredictionMatchConfig[]) =>
+  new Set(
+    predictionConfigs.filter((config) => config.enabled).map((config) => config.matchId),
+  );
+
+const createAdminState = (
+  predictions: OnlinePrediction[],
+  draws: LotteryDraw[],
+  predictionConfigs: PredictionMatchConfig[],
+  updatedAt = new Date().toISOString(),
+) => ({
+  predictions,
+  predictionCounts: buildPredictionCounts(predictions, getEnabledMatchIds(predictionConfigs)),
+  draws,
+  predictionConfigs,
+  updatedAt,
+});
 
 const toPositiveInteger = (value: unknown, fallback: number): number => {
   const numberValue = Number(value);
@@ -94,45 +138,46 @@ const sanitizePredictionConfigs = (
   configs: PredictionMatchConfig[],
 ): PredictionMatchConfig[] => {
   const seenMatchIds = new Set<string>();
+  const sanitizedConfigs: PredictionMatchConfig[] = [];
 
-  return configs
-    .map((config) => {
-      const fixture = fixtures.find((item) => item.id === config.matchId);
+  configs.forEach((config) => {
+    const fixture = fixtures.find((item) => item.id === config.matchId);
 
-      if (!fixture || seenMatchIds.has(config.matchId)) {
-        return null;
-      }
+    if (!fixture || seenMatchIds.has(config.matchId)) {
+      return;
+    }
 
-      seenMatchIds.add(config.matchId);
+    seenMatchIds.add(config.matchId);
 
-      const prizeName = config.prize?.name?.trim();
-      const sponsor = config.prize?.sponsor?.trim();
+    const prizeName = config.prize?.name?.trim();
+    const sponsor = config.prize?.sponsor?.trim();
 
-      if (!prizeName || !sponsor) {
-        throw new Error("奖品名称和 sponsor 不能为空");
-      }
+    if (!prizeName || !sponsor) {
+      throw new Error("奖品名称和 sponsor 不能为空");
+    }
 
-      return {
-        matchId: config.matchId,
-        enabled: Boolean(config.enabled),
-        eligibleMode: eligibleModes.includes(config.eligibleMode)
-          ? config.eligibleMode
-          : defaultEligibleMode,
-        winnerCount: toPositiveInteger(config.winnerCount, 1),
-        prize: {
-          id:
-            config.prize.id?.trim() ||
-            `prize-${config.matchId}-${prizeName.toLowerCase().replace(/\s+/g, "-")}`,
-          name: prizeName,
-          description: config.prize.description?.trim() || "本场竞猜参与者赛后抽奖。",
-          sponsor,
-          image: config.prize.image?.trim() || undefined,
-          quantity: toPositiveInteger(config.prize.quantity, 1),
-          note: config.prize.note?.trim() || undefined,
-        },
-      };
-    })
-    .filter((config): config is PredictionMatchConfig => Boolean(config));
+    sanitizedConfigs.push({
+      matchId: config.matchId,
+      enabled: Boolean(config.enabled),
+      eligibleMode: eligibleModes.includes(config.eligibleMode)
+        ? config.eligibleMode
+        : defaultEligibleMode,
+      winnerCount: toPositiveInteger(config.winnerCount, 1),
+      prize: {
+        id:
+          config.prize.id?.trim() ||
+          `prize-${config.matchId}-${prizeName.toLowerCase().replace(/\s+/g, "-")}`,
+        name: prizeName,
+        description: config.prize.description?.trim() || "本场竞猜参与者赛后抽奖。",
+        sponsor,
+        image: config.prize.image?.trim() || undefined,
+        quantity: toPositiveInteger(config.prize.quantity, 1),
+        note: config.prize.note?.trim() || undefined,
+      },
+    });
+  });
+
+  return sanitizedConfigs;
 };
 
 export const handler = async (event: {
@@ -145,14 +190,49 @@ export const handler = async (event: {
     return jsonResponse(405, { message: "Method not allowed" });
   }
 
-  const authError = authorize(event.headers);
-
-  if (authError) {
-    return jsonResponse(401, { message: authError });
-  }
-
   try {
     connectBlobs(event as { blobs: string; headers: Record<string, string> });
+
+    const clientKey = getClientKey(event.headers);
+    const authAttempts = await loadAdminAuthAttempts();
+    const nowMs = Date.now();
+    const currentAttempt = authAttempts[clientKey];
+
+    if (isLocked(currentAttempt?.lockedUntil, nowMs)) {
+      return jsonResponse(429, { message: "管理员登录尝试过多，请稍后再试。" });
+    }
+
+    const authError = authorize(event.headers);
+
+    if (authError) {
+      if (process.env.ADMIN_PASSWORD) {
+        const windowStartedAt = currentAttempt?.firstFailedAt
+          ? new Date(currentAttempt.firstFailedAt).getTime()
+          : 0;
+        const isSameWindow = nowMs - windowStartedAt < authWindowMs;
+        const failures = isSameWindow ? currentAttempt?.failures ?? 0 : 0;
+        const nextFailures = failures + 1;
+
+        authAttempts[clientKey] = {
+          failures: nextFailures,
+          firstFailedAt: isSameWindow && currentAttempt
+            ? currentAttempt.firstFailedAt
+            : new Date(nowMs).toISOString(),
+          lockedUntil:
+            nextFailures >= maxAuthFailures
+              ? new Date(nowMs + authLockMs).toISOString()
+              : undefined,
+        };
+        await saveAdminAuthAttempts(authAttempts);
+      }
+
+      return jsonResponse(401, { message: authError });
+    }
+
+    if (currentAttempt) {
+      delete authAttempts[clientKey];
+      await saveAdminAuthAttempts(authAttempts);
+    }
 
     const body = parseJsonBody<AdminActionBody>(event.body);
     const predictions = await loadPredictions();
@@ -160,12 +240,7 @@ export const handler = async (event: {
     const predictionConfigs = await loadPredictionConfigs();
 
     if (body.action === "state") {
-      return jsonResponse(200, {
-        predictions,
-        draws,
-        predictionConfigs,
-        updatedAt: new Date().toISOString(),
-      });
+      return jsonResponse(200, createAdminState(predictions, draws, predictionConfigs));
     }
 
     if (body.action === "savePredictionConfigs") {
@@ -173,12 +248,7 @@ export const handler = async (event: {
 
       await savePredictionConfigs(nextPredictionConfigs);
 
-      return jsonResponse(200, {
-        predictions,
-        draws,
-        predictionConfigs: nextPredictionConfigs,
-        updatedAt: new Date().toISOString(),
-      });
+      return jsonResponse(200, createAdminState(predictions, draws, nextPredictionConfigs));
     }
 
     if (body.action !== "draw") {
@@ -229,12 +299,7 @@ export const handler = async (event: {
 
     await saveDraws(nextDraws);
 
-    return jsonResponse(200, {
-      predictions,
-      draws: nextDraws,
-      predictionConfigs,
-      updatedAt: new Date().toISOString(),
-    });
+    return jsonResponse(200, createAdminState(predictions, nextDraws, predictionConfigs));
   } catch (error) {
     return jsonResponse(400, {
       message: error instanceof Error ? error.message : "管理员操作失败",

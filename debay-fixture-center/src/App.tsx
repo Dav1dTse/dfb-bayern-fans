@@ -46,6 +46,7 @@ function FixtureApp() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [onlineState, setOnlineState] = useState<PublicOnlineState>({
     predictions: [],
+    predictionCounts: [],
     draws: [],
     predictionConfigs: defaultPredictionMatchConfigs,
     updatedAt: new Date().toISOString(),
@@ -73,6 +74,17 @@ function FixtureApp() {
   const lotteryDrawByMatchId = useMemo(
     () => new Map(onlineState.draws.map((draw) => [draw.matchId, draw])),
     [onlineState.draws],
+  );
+
+  const predictionCountByMatchId = useMemo(
+    () =>
+      new Map(
+        onlineState.predictionCounts.map((count) => [
+          count.matchId,
+          count.participantCount,
+        ]),
+      ),
+    [onlineState.predictionCounts],
   );
 
   const predictionConfigByMatchId = useMemo(
@@ -247,6 +259,7 @@ function FixtureApp() {
                   predictionConfig={predictionConfigByMatchId.get(fixture.id)}
                   lotteryPredictionSnapshots={lotteryPredictionSnapshots}
                   onlinePredictions={onlineState.predictions}
+                  predictionParticipantCount={predictionCountByMatchId.get(fixture.id) ?? 0}
                   onPredictionSubmit={handlePredictionSubmit}
                   onToggle={toggleFixture}
                 />

@@ -8,10 +8,12 @@ type PredictionPanelProps = {
   match: MatchViewModel;
   predictionConfig: PredictionMatchConfig;
   predictions: OnlinePrediction[];
+  participantCount: number;
   onSubmit: (input: SubmitPredictionInput) => Promise<void>;
 };
 
 const nicknameStorageKey = "debay.prediction.nickname.v1";
+const localPredictionStorageKey = "debay.prediction.localSubmissions.v1";
 
 const loadNickname = (): string => {
   if (typeof window === "undefined") {
@@ -31,10 +33,47 @@ const saveNickname = (nickname: string) => {
 
 const normalizeNickname = (nickname: string): string => nickname.trim().toLowerCase();
 
+const loadLocalPredictions = (): OnlinePrediction[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(localPredictionStorageKey);
+    const parsedValue = rawValue ? JSON.parse(rawValue) : [];
+
+    return Array.isArray(parsedValue) ? (parsedValue as OnlinePrediction[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalPredictions = (predictions: OnlinePrediction[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(localPredictionStorageKey, JSON.stringify(predictions));
+};
+
+const upsertLocalPrediction = (
+  predictions: OnlinePrediction[],
+  nextPrediction: OnlinePrediction,
+): OnlinePrediction[] => {
+  const nextPredictions = predictions.filter(
+    (prediction) =>
+      prediction.matchId !== nextPrediction.matchId ||
+      normalizeNickname(prediction.nickname) !== normalizeNickname(nextPrediction.nickname),
+  );
+
+  return [...nextPredictions, nextPrediction];
+};
+
 export function PredictionPanel({
   match,
   predictionConfig,
   predictions,
+  participantCount,
   onSubmit,
 }: PredictionPanelProps) {
   const matchPredictions = useMemo(
@@ -42,6 +81,7 @@ export function PredictionPanel({
     [match.id, predictions],
   );
   const [nickname, setNickname] = useState(() => loadNickname());
+  const [localPredictions, setLocalPredictions] = useState(() => loadLocalPredictions());
   const [homeScore, setHomeScore] = useState("1");
   const [awayScore, setAwayScore] = useState("0");
   const [message, setMessage] = useState("同一场同一昵称只接受首次提交，重复提交不会覆盖。");
@@ -49,6 +89,10 @@ export function PredictionPanel({
   const trimmedNickname = nickname.trim();
   const existingPrediction = matchPredictions.find(
     (prediction) => normalizeNickname(prediction.nickname) === normalizeNickname(trimmedNickname),
+  ) ?? localPredictions.find(
+    (prediction) =>
+      prediction.matchId === match.id &&
+      normalizeNickname(prediction.nickname) === normalizeNickname(trimmedNickname),
   );
   const hasExistingPrediction = Boolean(existingPrediction);
   const isClosed = Date.now() >= new Date(match.fixture.kickoffUtc).getTime();
@@ -79,6 +123,20 @@ export function PredictionPanel({
         homeScore: Number(homeScore),
         awayScore: Number(awayScore),
       });
+      const now = new Date().toISOString();
+      const localPrediction: OnlinePrediction = {
+        id: `local-prediction-${match.id}-${encodeURIComponent(trimmedNickname)}`,
+        matchId: match.id,
+        nickname: trimmedNickname,
+        homeScore: Number(homeScore),
+        awayScore: Number(awayScore),
+        createdAt: now,
+        updatedAt: now,
+      };
+      const nextLocalPredictions = upsertLocalPrediction(localPredictions, localPrediction);
+
+      setLocalPredictions(nextLocalPredictions);
+      saveLocalPredictions(nextLocalPredictions);
       saveNickname(trimmedNickname);
       setMessage("你已提交，本场抽奖资格会自动计入。");
     } catch (error) {
@@ -159,7 +217,7 @@ export function PredictionPanel({
       </form>
 
       <div className="prediction-panel__summary">
-        <span>本场已提交 {matchPredictions.length} 人</span>
+        <span>本场已提交 {participantCount} 人</span>
         {existingPrediction && (
           <strong>
             你已提交：{existingPrediction.homeScore}-{existingPrediction.awayScore}

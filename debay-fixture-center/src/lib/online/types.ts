@@ -10,8 +10,14 @@ export type OnlinePrediction = {
   updatedAt: string;
 };
 
+export type PredictionCount = {
+  matchId: string;
+  participantCount: number;
+};
+
 export type PublicOnlineState = {
   predictions: OnlinePrediction[];
+  predictionCounts: PredictionCount[];
   draws: LotteryDraw[];
   predictionConfigs: PredictionMatchConfig[];
   updatedAt: string;

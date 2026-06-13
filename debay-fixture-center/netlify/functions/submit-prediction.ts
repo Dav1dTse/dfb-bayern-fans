@@ -2,6 +2,7 @@ import { fixtures } from "../../src/data/fixtures";
 import type { OnlinePrediction, SubmitPredictionInput } from "../../src/lib/online/types";
 import {
   connectBlobs,
+  createPublicState,
   loadDraws,
   loadPredictions,
   loadPredictionConfigs,
@@ -88,16 +89,12 @@ export const handler = async (event: {
 
     await savePredictions(nextPredictions);
 
-    const enabledMatchIds = new Set(
-      predictionConfigs.filter((config) => config.enabled).map((config) => config.matchId),
-    );
-
-    return jsonResponse(200, {
-      predictions: nextPredictions.filter((prediction) => enabledMatchIds.has(prediction.matchId)),
-      draws: (await loadDraws()).filter((draw) => enabledMatchIds.has(draw.matchId)),
+    return jsonResponse(200, createPublicState({
+      predictions: nextPredictions,
+      draws: await loadDraws(),
       predictionConfigs,
       updatedAt: now,
-    });
+    }));
   } catch (error) {
     return jsonResponse(400, {
       message: error instanceof Error ? error.message : "提交竞猜失败",
