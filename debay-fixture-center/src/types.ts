@@ -26,7 +26,13 @@ export type Fixture = {
   watchReason?: string;
 };
 
-export type FixtureFilter = "all" | "germany" | "bayern" | "important" | "selected";
+export type FixtureFilter =
+  | "all"
+  | "germany"
+  | "bayern"
+  | "important"
+  | "lottery"
+  | "selected";
 
 export type MatchStatus = "scheduled" | "live" | "finished";
 

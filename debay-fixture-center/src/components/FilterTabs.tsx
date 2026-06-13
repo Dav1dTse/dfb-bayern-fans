@@ -11,6 +11,7 @@ const filters: Array<{ value: FixtureFilter; label: string }> = [
   { value: "germany", label: "德国队比赛" },
   { value: "bayern", label: "拜仁球员参与" },
   { value: "important", label: "重要比赛" },
+  { value: "lottery", label: "有竞猜抽奖" },
   { value: "selected", label: "已选择比赛" },
 ];
 

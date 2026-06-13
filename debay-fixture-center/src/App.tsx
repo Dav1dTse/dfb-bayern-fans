@@ -35,6 +35,8 @@ const getSearchHaystack = (fixture: Fixture): string =>
     .join(" ")
     .toLowerCase();
 
+const repositoryUrl = "https://github.com/Dav1dTse/dfb-bayern-fans";
+
 function FixtureApp() {
   const browserTimeZone = useMemo(() => getBrowserTimeZone(), []);
   const [timeZone, setTimeZone] = useState(browserTimeZone);
@@ -124,9 +126,10 @@ function FixtureApp() {
       germany: fixtures.filter((fixture) => fixture.relatedToGermany).length,
       bayern: fixtures.filter((fixture) => fixture.relatedBayernPlayers.length > 0).length,
       important: fixtures.filter((fixture) => fixture.importance !== "normal").length,
+      lottery: fixtures.filter((fixture) => predictionConfigByMatchId.has(fixture.id)).length,
       selected: selectedIds.size,
     }),
-    [selectedIds.size],
+    [predictionConfigByMatchId, selectedIds.size],
   );
 
   const filteredFixtures = useMemo(() => {
@@ -138,6 +141,7 @@ function FixtureApp() {
         (activeFilter === "germany" && fixture.relatedToGermany) ||
         (activeFilter === "bayern" && fixture.relatedBayernPlayers.length > 0) ||
         (activeFilter === "important" && fixture.importance !== "normal") ||
+        (activeFilter === "lottery" && predictionConfigByMatchId.has(fixture.id)) ||
         (activeFilter === "selected" && selectedIds.has(fixture.id));
 
       if (!matchesFilter) {
@@ -158,7 +162,7 @@ function FixtureApp() {
 
       return getSearchHaystack(fixture).includes(normalizedQuery);
     });
-  }, [activeFilter, searchQuery, selectedBayernPlayer, selectedIds]);
+  }, [activeFilter, predictionConfigByMatchId, searchQuery, selectedBayernPlayer, selectedIds]);
 
   const toggleFixture = (fixtureId: string) => {
     setSelectedIds((current) => {
@@ -186,6 +190,13 @@ function FixtureApp() {
         <span>
           此页面由 @DavidTse 创建，暂时用于北理工同仁会内部交流、使用，如有问题，请联络{" "}
           <a href="mailto:davidtse.cn@gmail.com">davidtse.cn@gmail.com</a>
+        </span>
+        <span>
+          本项目已开源，地址是{" "}
+          <a href={repositoryUrl} target="_blank" rel="noreferrer">
+            {repositoryUrl}
+          </a>
+          ，欢迎 star 或提出建议。
         </span>
       </div>
 
