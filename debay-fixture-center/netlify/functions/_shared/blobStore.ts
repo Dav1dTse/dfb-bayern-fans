@@ -44,9 +44,18 @@ export const savePredictionConfigs = async (predictionConfigs: PredictionMatchCo
   await getFixtureStore().setJSON(predictionConfigsKey, predictionConfigs);
 };
 
-export const loadPublicState = async (): Promise<PublicOnlineState> => ({
-  predictions: await loadPredictions(),
-  draws: await loadDraws(),
-  predictionConfigs: await loadPredictionConfigs(),
-  updatedAt: new Date().toISOString(),
-});
+export const loadPublicState = async (): Promise<PublicOnlineState> => {
+  const predictionConfigs = await loadPredictionConfigs();
+  const enabledMatchIds = new Set(
+    predictionConfigs.filter((config) => config.enabled).map((config) => config.matchId),
+  );
+
+  return {
+    predictions: (await loadPredictions()).filter((prediction) =>
+      enabledMatchIds.has(prediction.matchId),
+    ),
+    draws: (await loadDraws()).filter((draw) => enabledMatchIds.has(draw.matchId)),
+    predictionConfigs,
+    updatedAt: new Date().toISOString(),
+  };
+};

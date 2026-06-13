@@ -88,9 +88,13 @@ export const handler = async (event: {
 
     await savePredictions(nextPredictions);
 
+    const enabledMatchIds = new Set(
+      predictionConfigs.filter((config) => config.enabled).map((config) => config.matchId),
+    );
+
     return jsonResponse(200, {
-      predictions: nextPredictions,
-      draws: await loadDraws(),
+      predictions: nextPredictions.filter((prediction) => enabledMatchIds.has(prediction.matchId)),
+      draws: (await loadDraws()).filter((draw) => enabledMatchIds.has(draw.matchId)),
       predictionConfigs,
       updatedAt: now,
     });
