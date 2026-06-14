@@ -20,7 +20,7 @@ const escapeIcsText = (value: string): string =>
 const foldIcsLine = (line: string): string => {
   /*
    * ICS 文件规范要求单行长度过长时进行折行：后续行以一个空格开头。
-   * 这里按字符数量做浏览器端轻量折行，足以覆盖中文描述、球员列表等整理数据。
+   * 这里按字符数量做浏览器端轻量折行，足以覆盖中文描述、球员列表等内容。
    * 真正接入大规模真实数据时，可继续升级为按 UTF-8 字节长度折行。
    */
   const maxLength = 72;
@@ -52,8 +52,8 @@ const buildEventDescription = (fixture: Fixture, timeZone: string): string => {
     `对阵：${fixture.homeTeam} vs ${fixture.awayTeam}`,
     `比赛类型：${fixture.competition} - ${fixture.stage}`,
     `相关拜仁球员：${bayernPlayers}`,
-    fixture.sourceBeijingTime ? `整理表北京时间：${fixture.sourceBeijingTime}` : "",
-    fixture.sourceBerlinTime ? `整理表柏林时间：${fixture.sourceBerlinTime}` : "",
+    fixture.sourceBeijingTime ? `北京时间：${fixture.sourceBeijingTime}` : "",
+    fixture.sourceBerlinTime ? `柏林时间：${fixture.sourceBerlinTime}` : "",
     `所选时区本地时间：${formatDateTimeInTimeZone(fixture.kickoffUtc, timeZone)} (${timeZone})`,
     fixture.watchReason ? `观看理由：${fixture.watchReason}` : "",
   ].filter(Boolean).join("\n");

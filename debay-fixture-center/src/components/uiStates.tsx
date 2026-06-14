@@ -23,7 +23,7 @@ export function EmptyState({
 
 export function ErrorState({
   title = "数据加载失败",
-  description = "请稍后重试，或先查看本地 seed 数据。",
+  description = "请稍后重试。",
   onRetry,
 }: {
   title?: string;

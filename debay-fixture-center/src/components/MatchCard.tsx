@@ -217,6 +217,13 @@ export function MatchCard({
           </div>
 
           <div className="match-card__actions">
+            <a
+              className="match-card__detail-link"
+              href={`/matches/${match.id}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              比赛详情
+            </a>
             <button
               type="button"
               className="details-button"

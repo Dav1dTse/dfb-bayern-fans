@@ -134,7 +134,7 @@ export function MatchTimeline({
     return (
       <EmptyState
         title="暂无比赛事件"
-        description="当前数据源还没有提供完整事件时间线。"
+        description="事件时间线暂未更新。"
       />
     );
   }
@@ -373,40 +373,6 @@ function PitchTeamLabel({ team, lineup, side }: { team: MatchTeam; lineup: Match
   );
 }
 
-const formatSourceScore = (source: NonNullable<MatchLineup["source"]>): string =>
-  source.score.home === null || source.score.away === null
-    ? "比分待同步"
-    : `${source.score.home}-${source.score.away}`;
-
-const formatSourceDate = (date?: string): string => {
-  if (!date) {
-    return "日期待同步";
-  }
-
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(date));
-};
-
-function LineupSourceNote({ lineup }: { lineup: MatchLineup }) {
-  const source = lineup.source;
-
-  if (!source) {
-    return null;
-  }
-
-  return (
-    <div className="lineup-source-note">
-      <strong>预测阵容参考</strong>
-      <span>
-        {formatSourceDate(source.date)} · {source.homeTeam} {formatSourceScore(source)} {source.awayTeam}
-        {source.status ? ` · ${source.status}` : ""}
-      </span>
-    </div>
-  );
-}
-
 function LineupPitch({
   homeTeam,
   awayTeam,
@@ -496,7 +462,6 @@ function TeamLineupBlock({ team, lineup }: { team: MatchTeam; lineup: MatchLineu
         <span>主教练</span>
         <strong>{lineup.coach ? <PlayerName name={lineup.coach} showOriginalOnHover /> : "暂未确认"}</strong>
       </div>
-      <LineupSourceNote lineup={lineup} />
       <div className="detail-subsection">
         <span className="detail-label">替补队员</span>
         <PlayerRows players={lineup.substitutes} emptyText="阵容待同步" />

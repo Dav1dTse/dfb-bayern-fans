@@ -170,12 +170,12 @@ export function FixtureCard({ fixture, selected, timeZone, onToggle }: FixtureCa
           <span>{timeZone}</span>
         </div>
         <div className="time-tile">
-          <span className="time-label">整理表时间</span>
+          <span className="time-label">北京时间</span>
           <strong>{fixture.sourceBeijingTime ?? formatUtcSourceTime(fixture.kickoffUtc)}</strong>
           <span>
             {fixture.sourceBerlinTime
               ? `柏林 ${fixture.sourceBerlinTime}`
-              : "UTC 源数据"}
+              : "UTC"}
           </span>
         </div>
       </div>

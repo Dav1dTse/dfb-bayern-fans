@@ -37,6 +37,7 @@ import type {
 import { fetchPublicOnlineState, submitOnlinePrediction } from "./lib/online/apiClient";
 import { toLotteryPredictionSnapshots } from "./lib/online/predictionSnapshots";
 import type { OnlinePrediction, PublicOnlineState, SubmitPredictionInput } from "./lib/online/types";
+import { useResponsiveMode } from "./hooks/useResponsiveMode";
 import {
   fetchApiFootballSnapshot,
   refreshCompletedFixtures,
@@ -101,39 +102,123 @@ function useRoute() {
 function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <main>
-      <div className="site-notice">
-        <span>
-          此页面由 @DavidTse 创建，暂时用于北理工同仁会内部交流、使用，如有问题，请联络{" "}
-          <a href="mailto:davidtse.cn@gmail.com">davidtse.cn@gmail.com</a>
-        </span>
-        <span>
-          本项目已开源，地址是{" "}
-          <a href={repositoryUrl} target="_blank" rel="noreferrer">
-            {repositoryUrl}
-          </a>
-          ，欢迎 star 或提出建议。
-        </span>
-      </div>
       {children}
-      <footer className="site-footer">
-        比赛数据来自{" "}
-        <a href="https://www.api-football.com/" target="_blank" rel="noreferrer">
-          API-FOOTBALL
-        </a>
-        ，页面保留本地 seed 作为不可用时的 fallback。
-      </footer>
     </main>
   );
 }
 
+type MobileNavIconName = "home" | "calendar" | "match" | "players" | "more";
+
+const mobileNavIcons: Record<MobileNavIconName, React.ReactNode> = {
+  home: (
+    <>
+      <path d="M3.75 11.25 12 4.5l8.25 6.75" />
+      <path d="M5.75 10.25v9.25h4.5v-5.25h3.5v5.25h4.5v-9.25" />
+    </>
+  ),
+  calendar: (
+    <>
+      <path d="M7.25 3.75v3.5" />
+      <path d="M16.75 3.75v3.5" />
+      <path d="M4.75 8.25h14.5" />
+      <path d="M5.25 5.75h13.5v14H5.25z" />
+      <path d="M8.25 12.25h2.25" />
+      <path d="M13.5 12.25h2.25" />
+      <path d="M8.25 16h2.25" />
+    </>
+  ),
+  match: (
+    <>
+      <path d="M4.25 6.25h15.5v11.5H4.25z" />
+      <path d="M12 6.25v11.5" />
+      <path d="M4.25 10h3.5v4h-3.5" />
+      <path d="M19.75 10h-3.5v4h3.5" />
+      <circle cx="12" cy="12" r="2.15" />
+    </>
+  ),
+  players: (
+    <>
+      <circle cx="12" cy="8" r="3.25" />
+      <path d="M5.75 19.25c.85-3 3.05-4.55 6.25-4.55s5.4 1.55 6.25 4.55" />
+      <path d="M17.1 8.55c1.7.2 2.9 1.3 3.15 2.95" />
+      <path d="M3.75 11.5c.25-1.65 1.45-2.75 3.15-2.95" />
+    </>
+  ),
+  more: (
+    <>
+      <path d="M5.5 5.5h5v5h-5z" />
+      <path d="M13.5 5.5h5v5h-5z" />
+      <path d="M5.5 13.5h5v5h-5z" />
+      <path d="M13.5 13.5h5v5h-5z" />
+    </>
+  ),
+};
+
+function MobileNavIcon({ name }: { name: MobileNavIconName }) {
+  return (
+    <svg
+      className="mobile-bottom-nav__icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {mobileNavIcons[name]}
+    </svg>
+  );
+}
+
 function TopNav() {
+  const { isMobile } = useResponsiveMode();
+  const pathname = window.location.pathname.replace(/\/$/, "") || "/";
+  const search = window.location.search;
+  const items = [
+    { href: "/", label: "首页", icon: "home" as const, isActive: pathname === "/" },
+    {
+      href: "/matches",
+      label: "赛程",
+      icon: "calendar" as const,
+      isActive: pathname === "/matches" && !search,
+    },
+    {
+      href: "/matches?team=germany",
+      label: "比赛",
+      icon: "match" as const,
+      isActive: pathname.startsWith("/matches/") || search.includes("team=germany"),
+    },
+    { href: "/players", label: "球员", icon: "players" as const, isActive: pathname.startsWith("/players") },
+    {
+      href: "/standings",
+      label: "更多",
+      icon: "more" as const,
+      isActive: pathname === "/standings",
+    },
+  ];
+
+  if (isMobile) {
+    return (
+      <nav className="mobile-bottom-nav" aria-label="移动端主导航">
+        {items.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            aria-current={item.isActive ? "page" : undefined}
+            className={item.isActive ? "is-active" : undefined}
+          >
+            <span className="mobile-bottom-nav__indicator" aria-hidden="true" />
+            <MobileNavIcon name={item.icon} />
+            <span className="mobile-bottom-nav__label">{item.label}</span>
+          </a>
+        ))}
+      </nav>
+    );
+  }
+
   return (
     <nav className="top-nav" aria-label="主导航">
-      <a href="/">首页</a>
-      <a href="/matches">全部赛程</a>
-      <a href="/players">球员</a>
-      <a href="/standings">积分榜</a>
-      <a href="/about-data">数据说明</a>
+      <a href="/" aria-current={pathname === "/" ? "page" : undefined}>首页</a>
+      <a href="/matches" aria-current={pathname === "/matches" ? "page" : undefined}>全部赛程</a>
+      <a href="/players" aria-current={pathname.startsWith("/players") ? "page" : undefined}>球员</a>
+      <a href="/standings" aria-current={pathname === "/standings" ? "page" : undefined}>更多</a>
     </nav>
   );
 }
@@ -180,6 +265,9 @@ function CompactMatchCard({
           ))}
         </div>
       )}
+      <a className="compact-match-card__detail-link" href={`/matches/${match.id}`}>
+        查看详情
+      </a>
     </article>
   );
 }
@@ -218,7 +306,6 @@ function HomePage({
   selectedBayernPlayer,
   filteredByPlayerMatches,
   selectedCount,
-  syncSummary,
   onTimezoneChange,
   onBayernPlayerChange,
 }: {
@@ -230,10 +317,10 @@ function HomePage({
   selectedBayernPlayer: string | null;
   filteredByPlayerMatches: MatchViewModel[];
   selectedCount: number;
-  syncSummary: string;
   onTimezoneChange: (timeZone: string) => void;
   onBayernPlayerChange: (playerName: string | null) => void;
 }) {
+  const { isMobile } = useResponsiveMode();
   const now = Date.now();
   const sortedMatches = [...matches].sort(sortByKickoffAsc);
   const liveMatches = sortedMatches.filter((match) => match.status === "live");
@@ -255,6 +342,100 @@ function HomePage({
           match.fixture.relatedBayernPlayers.length > 0),
     )
     .slice(0, 4);
+
+  if (isMobile) {
+    return (
+      <>
+        <TopNav />
+        <section className="mobile-home" aria-label="移动端首页">
+          <header className="mobile-home__header">
+            <div>
+              <span className="section-caption">Debay Fixture Center</span>
+              <h1>德拜赛程</h1>
+              <p>德国队与拜仁球员相关比赛，按当前时区展示。</p>
+            </div>
+            <div className="mobile-home__status" aria-label="当前状态">
+              <span><strong>{matches.length}</strong> 场赛程</span>
+              <span><strong>{matches.filter((match) => match.fixture.relatedBayernPlayers.length > 0).length}</strong> 场拜仁相关</span>
+              <span><strong>{selectedCount}</strong> 场已选择</span>
+            </div>
+          </header>
+
+          <SectionBlock caption="Next" title="下一场比赛" action={<a className="text-link" href="/matches">全部赛程</a>}>
+            {nextMatch ? (
+              <CompactMatchCard match={nextMatch} label="下一场" />
+            ) : (
+              <EmptyState title="暂无下一场比赛" description="当前赛程中没有可展示的未完赛场次。" />
+            )}
+          </SectionBlock>
+
+          {liveMatches.length > 0 && (
+            <SectionBlock caption="Live" title="正在进行">
+              <div className="compact-card-grid">
+                {liveMatches.slice(0, 2).map((match) => (
+                  <CompactMatchCard key={match.id} match={match} label="Live" compact />
+                ))}
+              </div>
+            </SectionBlock>
+          )}
+
+          <SectionBlock caption="Results" title="最近赛果">
+            {recentResults.length > 0 ? (
+              <div className="compact-card-grid">
+                {recentResults.slice(0, 2).map((match) => (
+                  <CompactMatchCard key={match.id} match={match} label="已结束" compact />
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="暂无最近赛果" description="完场比分同步后会显示最近赛果。" />
+            )}
+          </SectionBlock>
+
+          <SectionBlock caption="Focus" title="近期赛程">
+            {focusMatches.length > 0 ? (
+              <div className="compact-card-grid">
+                {focusMatches.slice(0, 3).map((match) => (
+                  <CompactMatchCard
+                    key={match.id}
+                    match={match}
+                    label={match.fixture.importance === "must-watch" ? "必看" : "重点"}
+                    compact
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState title="暂无重点赛程" description="德国队、拜仁相关或重点比赛会优先显示在这里。" />
+            )}
+          </SectionBlock>
+
+          <section className="content-section mobile-home__quick">
+            <div className="section-heading">
+              <div>
+                <span className="section-caption">Shortcuts</span>
+                <h2>快速入口</h2>
+              </div>
+            </div>
+            <div className="quick-links">
+              <a href="/matches?team=germany">德国队比赛</a>
+              <a href="/matches?team=bayern">拜仁相关</a>
+              <a href="/players">球员名单</a>
+              <a href="/standings">更多</a>
+            </div>
+          </section>
+
+          <section className="content-section mobile-home__tools">
+            <TimezoneSelector
+              value={timeZone}
+              options={timeZoneOptions}
+              browserTimeZone={browserTimeZone}
+              onChange={onTimezoneChange}
+            />
+          </section>
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
       <Hero
@@ -276,7 +457,7 @@ function HomePage({
             <a href="/matches?team=germany">德国队比赛</a>
             <a href="/matches?team=bayern">拜仁相关</a>
             <a href="/players">球员名单</a>
-            <a href="/about-data">数据说明</a>
+            <a href="/standings">更多</a>
           </div>
           <div className="home-timezone-control">
             <TimezoneSelector
@@ -285,7 +466,6 @@ function HomePage({
               browserTimeZone={browserTimeZone}
               onChange={onTimezoneChange}
             />
-            {syncSummary && <p className="list-heading__sync">{syncSummary}</p>}
           </div>
         </div>
 
@@ -395,7 +575,6 @@ function MatchesPage({
   lotteryPredictionSnapshots,
   onlinePredictions,
   predictionCountByMatchId,
-  syncSummary,
   onToggleFixture,
   onClearSelection,
   onPredictionSubmit,
@@ -411,7 +590,6 @@ function MatchesPage({
   lotteryPredictionSnapshots: LotteryPredictionSnapshot[];
   onlinePredictions: OnlinePrediction[];
   predictionCountByMatchId: Map<string, number>;
-  syncSummary: string;
   onToggleFixture: (id: string) => void;
   onClearSelection: () => void;
   onPredictionSubmit: (input: SubmitPredictionInput) => Promise<void>;
@@ -523,7 +701,6 @@ function MatchesPage({
             </select>
           </label>
         </div>
-        {syncSummary && <p className="list-heading__sync">{syncSummary}</p>}
       </section>
 
       <section className="app-layout" aria-label="比赛列表与已选比赛">
@@ -589,7 +766,7 @@ function MatchStatsPanel() {
   return (
     <EmptyState
       title="暂无技术统计"
-      description="当前数据源未提供控球率、射门、角球、犯规和牌数等字段；页面不会编造缺失数据。"
+      description="控球率、射门、角球、犯规和牌数暂未展示。"
     />
   );
 }
@@ -629,6 +806,11 @@ function MatchDetailPage({
     <>
       <TopNav />
       <div className="match-detail-shell">
+        <div className="match-detail-topbar">
+          <a href="/matches" aria-label="返回全部赛程">返回</a>
+          <strong>{match.homeTeam.shortName} vs {match.awayTeam.shortName}</strong>
+          <span className={`match-status match-status--${match.status}`}>{match.statusLabel}</span>
+        </div>
         <MatchHero match={match} />
         <MatchTabs activeTab={activeTab} onChange={setActiveTab} />
 
@@ -734,17 +916,24 @@ function PlayersPage({ fixturesData, missingNames }: { fixturesData: Fixture[]; 
       <PageHeader
         eyebrow="Players"
         title="球员名单"
-        description="当前展示赛程数据中出现的拜仁球员与德国队拜仁球员。"
+        description="当前赛程中出现的拜仁球员与德国队拜仁球员。"
       />
       <div className="page-shell">
         <div className="player-directory">
           {players.map((player) => (
             <a className="player-directory-card" href={`/players/${toPlayerSlug(player.name)}`} key={player.name}>
-              <strong>
-                <PlayerName name={player.name} showOriginalOnHover />
-              </strong>
-              <span>{Array.from(player.teams).join(" / ")} · {player.role}</span>
-              <small>{player.fixtureCount} 场相关赛程</small>
+              <span className="player-directory-card__body">
+                <strong>
+                  <PlayerName name={player.name} showOriginalOnHover />
+                </strong>
+                <span>{Array.from(player.teams).join(" / ")} · {player.role}</span>
+                <small>{player.fixtureCount} 场相关赛程</small>
+              </span>
+              {player.shirtNumber ? (
+                <span className="player-directory-card__number" aria-label={`拜仁号码 ${player.shirtNumber}`}>
+                  {player.shirtNumber}
+                </span>
+              ) : null}
             </a>
           ))}
         </div>
@@ -764,7 +953,7 @@ function PlayersPage({ fixturesData, missingNames }: { fixturesData: Fixture[]; 
               ))}
             </div>
           ) : (
-            <EmptyState title="当前无缺失译名" description="已覆盖当前静态赛程和本地事件 seed 中出现的球员名。" />
+            <EmptyState title="当前无缺失译名" description="已覆盖当前赛程和事件中出现的球员名。" />
           )}
         </section>
       </div>
@@ -829,59 +1018,44 @@ function PlayerDetailPage({ fixturesData, slug }: { fixturesData: Fixture[]; slu
   );
 }
 
-function StandingsPage() {
+function MorePage() {
   return (
     <>
       <TopNav />
-      <PageHeader eyebrow="Standings" title="积分榜" description="当前数据流暂无积分榜数据。" />
+      <PageHeader eyebrow="More" title="更多" description="项目说明、开源地址与交流方式。" />
       <div className="page-shell">
-        <EmptyState title="暂无积分榜数据" description="当前 provider 返回空积分榜，后续有稳定数据后可直接接入展示。" />
-      </div>
-    </>
-  );
-}
-
-function AboutDataPage({
-  syncSummary,
-  missingNames,
-}: {
-  syncSummary: string;
-  missingNames: string[];
-}) {
-  return (
-    <>
-      <TopNav />
-      <PageHeader eyebrow="About Data" title="数据说明" description="说明数据来源、更新时间、缺失字段处理与中文名来源。" />
-      <div className="page-shell">
-        <section className="content-section">
-          <InfoGrid
-            items={[
-              { label: "赛程来源", value: "德拜球迷世界杯赛程指南_德国时间.docx，本地 fixtures seed" },
-              { label: "比赛详情", value: "沿用当前 API-FOOTBALL 同步结果；失败时使用本地 seed fallback" },
-              { label: "同步状态", value: syncSummary || "正在同步或等待状态更新" },
-              { label: "缺失字段处理", value: "比分、事件、阵容、裁判或技术统计缺失时显示空状态，不编造数据" },
-              { label: "中文名来源", value: "优先使用拜仁中文官网、DFB/协会官方、UEFA 或主流中文体育媒体通用译名" },
-            ]}
-          />
-        </section>
-        <section className="content-section">
+        <section className="content-section more-section">
           <div className="section-heading">
             <div>
-              <span className="section-caption">Missing Names</span>
-              <h2>仍需确认的中文名</h2>
+              <span className="section-caption">About</span>
+              <h2>关于项目</h2>
             </div>
           </div>
-          {missingNames.length > 0 ? (
-            <div className="missing-name-list">
-              {missingNames.map((name) => (
-                <span className="tag" key={name}>
-                  <PlayerName name={name} showOriginalOnHover />
-                </span>
-              ))}
+          <p>
+            此页面由 @DavidTse 创建，暂时用于北理工同仁会内部交流、使用。
+            欢迎提出建议、反馈问题，也欢迎一起完善德拜球迷赛程体验。
+          </p>
+        </section>
+
+        <section className="content-section more-section">
+          <div className="section-heading">
+            <div>
+              <span className="section-caption">Open Source</span>
+              <h2>项目地址</h2>
             </div>
-          ) : (
-            <EmptyState title="当前无缺失译名" description="当前静态数据中出现的球员均已有中文名映射。" />
-          )}
+          </div>
+          <p>
+            本项目已开源，欢迎 star、交流想法或提交改进建议。
+          </p>
+          <div className="quick-links quick-links--more">
+            <a href={repositoryUrl} target="_blank" rel="noreferrer">
+              GitHub 项目地址
+            </a>
+            <a href="mailto:davidtse.cn@gmail.com">
+              联系 David
+            </a>
+          </div>
+          <p className="more-section__url">{repositoryUrl}</p>
         </section>
       </div>
     </>
@@ -894,7 +1068,6 @@ function FixtureApp() {
   const [timeZone, setTimeZone] = useState(browserTimeZone);
   const [selectedBayernPlayer, setSelectedBayernPlayer] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [completedSyncSummary, setCompletedSyncSummary] = useState("");
   const [apiFootballFixtures, setApiFootballFixtures] = useState<FootballFixtureData[]>([]);
   const [onlineState, setOnlineState] = useState<PublicOnlineState>({
     predictions: [],
@@ -911,7 +1084,6 @@ function FixtureApp() {
   useEffect(() => {
     let isMounted = true;
 
-    setCompletedSyncSummary("正在从 API-FOOTBALL 同步赛程和比赛详情...");
     fetchApiFootballSnapshot(timeZone)
       .then((snapshot) => {
         if (!isMounted) {
@@ -919,21 +1091,13 @@ function FixtureApp() {
         }
 
         setApiFootballFixtures(snapshot.fixtures);
-        setCompletedSyncSummary(
-          `API-FOOTBALL 已同步 ${snapshot.fixtures.length} 场，已检查 ${snapshot.report.checkedFixtureIds.length} 场完场比赛，${snapshot.report.pendingFixtureIds.length} 场仍有详情待同步。`,
-        );
       })
       .catch(() => {
         if (!isMounted) {
           return;
         }
 
-        const report = refreshCompletedFixtures();
-        setCompletedSyncSummary(
-          report.pendingFixtureIds.length > 0
-            ? `本地 seed 已检查 ${report.checkedFixtureIds.length} 场完场比赛，${report.pendingFixtureIds.length} 场仍有详情待同步。`
-            : `本地 seed 已检查 ${report.checkedFixtureIds.length} 场完场比赛，详情数据完整。`,
-        );
+        refreshCompletedFixtures();
       });
 
     return () => {
@@ -1094,7 +1258,6 @@ function FixtureApp() {
         lotteryPredictionSnapshots={lotteryPredictionSnapshots}
         onlinePredictions={onlineState.predictions}
         predictionCountByMatchId={predictionCountByMatchId}
-        syncSummary={completedSyncSummary}
         onToggleFixture={toggleFixture}
         onClearSelection={clearSelection}
         onPredictionSubmit={handlePredictionSubmit}
@@ -1121,9 +1284,7 @@ function FixtureApp() {
   } else if (playerDetailSlug) {
     page = <PlayerDetailPage fixturesData={fixtures} slug={decodeURIComponent(playerDetailSlug)} />;
   } else if (pathname === "/standings") {
-    page = <StandingsPage />;
-  } else if (pathname === "/about-data") {
-    page = <AboutDataPage syncSummary={completedSyncSummary} missingNames={missingPlayerNames} />;
+    page = <MorePage />;
   } else {
     page = (
       <>
@@ -1136,7 +1297,6 @@ function FixtureApp() {
           selectedBayernPlayer={selectedBayernPlayer}
           filteredByPlayerMatches={filteredByPlayerMatches}
           selectedCount={selectedIds.size}
-          syncSummary={completedSyncSummary}
           onTimezoneChange={setTimeZone}
           onBayernPlayerChange={setSelectedBayernPlayer}
         />
