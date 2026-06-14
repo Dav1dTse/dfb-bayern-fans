@@ -26,6 +26,8 @@ export type LocalFixtureDetailSeed = {
 export const emptyLineup: MatchLineup = {
   formation: undefined,
   coach: undefined,
+  colors: undefined,
+  source: undefined,
   startingXI: [],
   substitutes: [],
 };

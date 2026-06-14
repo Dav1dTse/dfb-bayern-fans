@@ -6,7 +6,9 @@ import type {
   MatchDataCompleteness,
   MatchEvent,
   MatchEventType,
+  MatchKitColor,
   MatchLineup,
+  MatchLineupColors,
   MatchOfficials,
   MatchPlayer,
   MatchScore,
@@ -23,6 +25,18 @@ type ApiFootballTeam = {
   code?: string | null;
   country?: string | null;
   logo?: string | null;
+  colors?: ApiFootballLineupColors | null;
+};
+
+type ApiFootballKitColor = {
+  primary?: string | null;
+  number?: string | null;
+  border?: string | null;
+};
+
+type ApiFootballLineupColors = {
+  player?: ApiFootballKitColor | null;
+  goalkeeper?: ApiFootballKitColor | null;
 };
 
 type ApiFootballFixturePayload = {
@@ -108,6 +122,20 @@ type ApiFootballFixturePayload = {
         pos?: string | null;
         grid?: string | null;
       };
+    }>;
+  }>;
+  players?: Array<{
+    team?: ApiFootballTeam;
+    players?: Array<{
+      player?: {
+        id?: number | null;
+        name?: string | null;
+      };
+      statistics?: Array<{
+        games?: {
+          rating?: string | number | null;
+        };
+      }>;
     }>;
   }>;
 };
@@ -221,19 +249,137 @@ const normalizeEvents = (payload: ApiFootballFixturePayload): MatchEvent[] =>
     };
   });
 
-const normalizePlayer = (player?: {
+type LineupSide = "home" | "away";
+
+type ApiFootballLineupPlayer = {
+  id?: number | null;
   name?: string | null;
   number?: number | string | null;
   pos?: string | null;
-}): MatchPlayer => ({
-  name: player?.name ?? "球员待确认",
+  grid?: string | null;
+};
+
+type PlayerStatLookupItem = {
+  name?: string;
+  rating?: string;
+};
+
+type PlayerStatLookup = Record<LineupSide, Map<string, PlayerStatLookupItem>>;
+
+const playerStatIdKey = (value: number | string): string => `id:${value}`;
+
+const playerStatNameKey = (name: string): string => `name:${name.trim().toLowerCase()}`;
+
+const getLineupSide = (
+  teamId: number | undefined,
+  payload: ApiFootballFixturePayload,
+): LineupSide => (teamId && teamId === payload.teams?.away?.id ? "away" : "home");
+
+const normalizeRating = (rating?: string | number | null): string | undefined => {
+  if (rating === null || rating === undefined || rating === "") {
+    return undefined;
+  }
+
+  const numericRating = Number(rating);
+  return Number.isFinite(numericRating) ? numericRating.toFixed(1) : undefined;
+};
+
+const buildPlayerStatLookup = (payload: ApiFootballFixturePayload): PlayerStatLookup => {
+  const lookup: PlayerStatLookup = {
+    home: new Map(),
+    away: new Map(),
+  };
+
+  (payload.players ?? []).forEach((teamPlayers) => {
+    const side = getLineupSide(teamPlayers.team?.id, payload);
+
+    (teamPlayers.players ?? []).forEach((playerStat) => {
+      const rating = normalizeRating(
+        playerStat.statistics?.find((stat) => stat.games?.rating !== null && stat.games?.rating !== undefined)
+          ?.games?.rating,
+      );
+      const item: PlayerStatLookupItem = {
+        name: playerStat.player?.name ?? undefined,
+        rating,
+      };
+
+      if (typeof playerStat.player?.id === "number") {
+        lookup[side].set(playerStatIdKey(playerStat.player.id), item);
+      }
+
+      if (playerStat.player?.name) {
+        lookup[side].set(playerStatNameKey(playerStat.player.name), item);
+      }
+    });
+  });
+
+  return lookup;
+};
+
+const getPlayerStat = (
+  lookup: PlayerStatLookup,
+  side: LineupSide,
+  player?: ApiFootballLineupPlayer,
+): PlayerStatLookupItem | undefined => {
+  if (typeof player?.id === "number") {
+    const stat = lookup[side].get(playerStatIdKey(player.id));
+    if (stat) {
+      return stat;
+    }
+  }
+
+  return player?.name ? lookup[side].get(playerStatNameKey(player.name)) : undefined;
+};
+
+const normalizeColorValue = (value?: string | null): string | undefined => {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed.toLowerCase() === "null") {
+    return undefined;
+  }
+
+  const hex = trimmed.replace(/^#/, "");
+  return /^[0-9a-f]{3}([0-9a-f]{3})?$/i.test(hex) ? `#${hex}` : undefined;
+};
+
+const normalizeKitColor = (color?: ApiFootballKitColor | null): MatchKitColor | undefined => {
+  const normalized: MatchKitColor = {
+    primary: normalizeColorValue(color?.primary),
+    number: normalizeColorValue(color?.number),
+    border: normalizeColorValue(color?.border),
+  };
+
+  return normalized.primary || normalized.number || normalized.border ? normalized : undefined;
+};
+
+const normalizeLineupColors = (colors?: ApiFootballLineupColors | null): MatchLineupColors | undefined => {
+  const normalized: MatchLineupColors = {
+    player: normalizeKitColor(colors?.player),
+    goalkeeper: normalizeKitColor(colors?.goalkeeper),
+  };
+
+  return normalized.player || normalized.goalkeeper ? normalized : undefined;
+};
+
+const normalizePlayer = (player?: {
+  id?: number | null;
+  name?: string | null;
+  number?: number | string | null;
+  pos?: string | null;
+  grid?: string | null;
+}, stat?: PlayerStatLookupItem): MatchPlayer => ({
+  id: player?.id ?? undefined,
+  name: stat?.name ?? player?.name ?? "球员待确认",
   number: player?.number ?? "-",
   position: player?.pos ?? "位置待确认",
+  grid: player?.grid ?? undefined,
+  rating: stat?.rating,
 });
 
 const emptyLineup = (): MatchLineup => ({
   formation: undefined,
   coach: undefined,
+  colors: undefined,
+  source: undefined,
   startingXI: [],
   substitutes: [],
 });
@@ -243,14 +389,20 @@ const normalizeLineups = (payload: ApiFootballFixturePayload): FootballLineups =
     home: emptyLineup(),
     away: emptyLineup(),
   };
+  const playerStats = buildPlayerStatLookup(payload);
 
   (payload.lineups ?? []).forEach((lineup) => {
-    const side = lineup.team?.id === payload.teams?.away?.id ? "away" : "home";
+    const side = getLineupSide(lineup.team?.id, payload);
     lineups[side] = {
       formation: lineup.formation,
       coach: lineup.coach?.name ?? undefined,
-      startingXI: (lineup.startXI ?? []).map((item) => normalizePlayer(item.player)),
-      substitutes: (lineup.substitutes ?? []).map((item) => normalizePlayer(item.player)),
+      colors: normalizeLineupColors(lineup.team?.colors),
+      startingXI: (lineup.startXI ?? []).map((item) =>
+        normalizePlayer(item.player, getPlayerStat(playerStats, side, item.player)),
+      ),
+      substitutes: (lineup.substitutes ?? []).map((item) =>
+        normalizePlayer(item.player, getPlayerStat(playerStats, side, item.player)),
+      ),
     };
   });
 

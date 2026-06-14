@@ -7,6 +7,7 @@ import type {
   MatchDataCompleteness,
   MatchLineup,
   MatchOfficials,
+  MatchPlayer,
   MatchScore,
 } from "../../types";
 import { formatDateTimeInTimeZone } from "../../utils/time";
@@ -42,18 +43,25 @@ const emptyScore: FootballScore = {
   fullTime: emptyScoreLine,
 };
 
+const clonePlayers = (players?: MatchPlayer[]): MatchPlayer[] =>
+  players ? players.map((player) => ({ ...player })) : [];
+
 const cloneLineup = (lineup: MatchLineup = emptyLineup): MatchLineup => ({
   formation: lineup.formation,
   coach: lineup.coach,
-  startingXI: [...lineup.startingXI],
-  substitutes: [...lineup.substitutes],
+  colors: lineup.colors ? { ...lineup.colors } : undefined,
+  source: lineup.source ? { ...lineup.source, score: { ...lineup.source.score } } : undefined,
+  startingXI: clonePlayers(lineup.startingXI),
+  substitutes: clonePlayers(lineup.substitutes),
 });
 
 const mergeLineup = (lineup?: Partial<MatchLineup>): MatchLineup => ({
   formation: lineup?.formation,
   coach: lineup?.coach,
-  startingXI: lineup?.startingXI ? [...lineup.startingXI] : [],
-  substitutes: lineup?.substitutes ? [...lineup.substitutes] : [],
+  colors: lineup?.colors ? { ...lineup.colors } : undefined,
+  source: lineup?.source ? { ...lineup.source, score: { ...lineup.source.score } } : undefined,
+  startingXI: clonePlayers(lineup?.startingXI),
+  substitutes: clonePlayers(lineup?.substitutes),
 });
 
 const mergeLineups = (lineups?: Partial<FootballLineups>): FootballLineups => ({

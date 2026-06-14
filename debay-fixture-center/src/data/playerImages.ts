@@ -5,112 +5,150 @@ export type PlayerImage = {
   credit: string;
 };
 
+const officialBayernImage = (imagePath: string): string =>
+  `https://img.fcbayern.com/image/upload/f_auto/q_auto/ar_1%3A1%2Cc_fill%2Cg_custom%2Cw_768/${imagePath}`;
+
+const officialBayernLicense =
+  "FC Bayern official player portrait, rights reserved; remote image reference only";
+
+const officialBayernCredit = "FC Bayern München AG";
+
 export const playerImages: Record<string, PlayerImage> = {
   "Jamal Musiala": {
-    src: "/player-images/jamal-musiala.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Jamal_Musiala_2022.jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Steffen Prößdorf / cropped by Commons contributors",
+    src: officialBayernImage(
+      "v1778845185/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/Musiala_Campus_light.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/jamal-musiala",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Joshua Kimmich": {
-    src: "/player-images/joshua-kimmich.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:2015-05-01_Joshua_Kimmich.jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Wikijunkie",
-  },
-  "Leroy Sané": {
-    src: "/player-images/leroy-sane.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Leroy_Sane_S04_2015.jpg",
-    license: "CC BY 2.0",
-    credit: "Daniel Kraski",
-  },
-  "Serge Gnabry": {
-    src: "/player-images/serge-gnabry.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Serge_Gnabry_(10834583033).jpg",
-    license: "CC BY 2.0",
-    credit: "Kieran Clarke",
+    src: officialBayernImage(
+      "v1656614911/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/joshua_kimmich.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/joshua-kimmich",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Manuel Neuer": {
-    src: "/player-images/manuel-neuer.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Manuel_Neuer_2012_(cropped).jpg",
-    license: "CC BY-SA 3.0",
-    credit: "Michael Kranewitter",
+    src: officialBayernImage(
+      "v1719763484/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/manuel_neuer.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/manuel-neuer",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Harry Kane": {
-    src: "/player-images/harry-kane.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Harry_Kane_2023.jpg",
-    license: "CC BY 2.0",
-    credit: "Simon Walker / No 10 Downing Street",
+    src: officialBayernImage(
+      "v1691827799/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/harry-kane.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/harry-kane",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Dayot Upamecano": {
-    src: "/player-images/dayot-upamecano.jpg",
-    sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:FC_Red_Bull_Salzburg_gegen_Bayern_M%C3%BCnchen_(2025-01-06_Testspiel)_02.jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Werner100359",
+    src: officialBayernImage(
+      "v1656614772/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/dayot_upamecano.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/dayot-upamecano",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Michael Olise": {
-    src: "/player-images/michael-olise.jpg",
-    sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:FC_RB_Salzburg_gegen_FC_Bayern_M%C3%BCnchen_(2026-01-06_Testspiel)_10.jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Commons contributor",
-  },
-  "Kingsley Coman": {
-    src: "/player-images/kingsley-coman.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Kingsley_Coman_(2019).jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Sven Mandel",
+    src: officialBayernImage(
+      "v1726228393/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/michael-olise.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/michael-olise",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Alphonso Davies": {
-    src: "/player-images/alphonso-davies.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Alphonso_Davies_2018.jpg",
-    license: "CC BY 2.0",
-    credit: "Chris McPhee",
+    src: officialBayernImage(
+      "v1656615722/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/alphonso_davies.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/alphonso-davies",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Jonathan Tah": {
-    src: "/player-images/jonathan-tah.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Jonathan-Tah.jpg",
-    license: "CC BY-SA 3.0",
-    credit: "Fuguito",
+    src: officialBayernImage(
+      "v1756462914/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/jonathan-tah.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/jonathan-tah",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Hiroki Ito": {
-    src: "/player-images/hiroki-ito.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Hiroki_Ito_VfB_Stuttgart.jpg",
-    license: "CC BY 3.0 / GFDL",
-    credit: "Jeollo von VfB-exklusiv.de",
+    src: officialBayernImage(
+      "v1718361788/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/hiroki-ito.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/hiroki-ito",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Nicolas Jackson": {
-    src: "/player-images/nicolas-jackson.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Nicolas_Jackson_20042025_(1).jpg",
-    license: "CC0 1.0",
-    credit: "Timmy96",
+    src: officialBayernImage(
+      "v1756760031/cms/public/images/fcbayern-com/players/spielerportraits/teaser/nicolas-jackson.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/nicolas-jackson",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Josip Stanisic": {
-    src: "/player-images/josip-stanisic.png",
-    sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Josip_Stani%C5%A1i%C4%87_during_an_Interview_in_2023.png",
-    license: "CC BY 3.0",
-    credit: "PIXSELL",
+    src: officialBayernImage(
+      "v1778846333/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/Stanisic_Campus_light.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/josip-stani%C5%A1i%C4%87",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
+  },
+  "Josip Stanišić": {
+    src: officialBayernImage(
+      "v1778846333/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/Stanisic_Campus_light.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/josip-stani%C5%A1i%C4%87",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Luis Diaz": {
-    src: "/player-images/luis-diaz.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:Luis_Diaz_2022.jpg",
-    license: "CC BY-SA 4.0",
-    credit: "Dudek1337",
+    src: officialBayernImage(
+      "v1753859302/cms/public/images/fcbayern-com/players/spielerportraits/teaser/luis-diaz.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/luis-diaz",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
+  },
+  "Luis Díaz": {
+    src: officialBayernImage(
+      "v1753859302/cms/public/images/fcbayern-com/players/spielerportraits/teaser/luis-diaz.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/luis-diaz",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Kim Min-jae": {
-    src: "/player-images/kim-min-jae.png",
-    sourceUrl:
-      "https://commons.wikimedia.org/wiki/File:Min-Jae_Kim_(2021-22_S%C3%BCper_Lig)_-_Resim6.png",
-    license: "CC BY 3.0",
-    credit: "beIN SPORTS Türkiye",
+    src: officialBayernImage(
+      "v1689695039/cms/public/images/fcbayern-com/players/spielerportraits/teaser/minjae-kim.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/minjae-kim",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
+  },
+  "Minjae Kim": {
+    src: officialBayernImage(
+      "v1689695039/cms/public/images/fcbayern-com/players/spielerportraits/teaser/minjae-kim.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/minjae-kim",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
   "Konrad Laimer": {
-    src: "/player-images/konrad-laimer.jpg",
-    sourceUrl: "https://commons.wikimedia.org/wiki/File:20161011_U21_AUT_GER_9254.jpg",
-    license: "CC BY-SA 3.0",
-    credit: "Ailura",
+    src: officialBayernImage(
+      "v1686144311/cms/public/images/fcbayern-com/players/spielerportraits/ganzkoerper/konrad-laimer.png",
+    ),
+    sourceUrl: "https://fcbayern.com/en/teams/first-team/konrad-laimer",
+    license: officialBayernLicense,
+    credit: officialBayernCredit,
   },
 };
 

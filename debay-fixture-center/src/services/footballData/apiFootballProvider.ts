@@ -1,8 +1,13 @@
 import { fixtures } from "../../data/fixtures";
-import type { MatchDataCompleteness } from "../../types";
-import type { MatchEvent } from "../../types";
+import type {
+  MatchDataCompleteness,
+  MatchEvent,
+  MatchLineup,
+  MatchLineupSource,
+} from "../../types";
 import { API_FOOTBALL_ENDPOINTS, FINAL_STATUS_CODES } from "./cachePolicy";
 import { normalizeApiFootballFixtureResponse, type ApiFootballFixtureResponse } from "./normalizer";
+import { toLocalTeamName } from "./teamAliases";
 import type {
   FootballDataProvider,
   FootballFixtureData,
@@ -21,12 +26,16 @@ type ProxyAction =
   | "rounds"
   | "players"
   | "fixturePlayers"
+  | "previousTeamLineup"
+  | "lineupPredictions"
   | "snapshot";
 
 type ProxyRequest = {
   action: ProxyAction;
   fixtureId?: string;
   fixtureIds?: string[];
+  teamId?: number;
+  before?: string;
   status?: string;
   page?: number;
   force?: boolean;
@@ -39,6 +48,22 @@ type ApiFootballSnapshotResponse = {
   expiresAt: string;
   fixturesPayload: ApiFootballFixtureResponse;
   detailPayloads: ApiFootballFixtureResponse[];
+};
+
+type ApiFootballLineupPrediction = {
+  currentFixtureId?: number;
+  teamId: number;
+  side: "home" | "away";
+  sourceFixture: NonNullable<ApiFootballFixtureResponse["response"]>[number];
+  lookup: "worldCupSnapshot" | "teamRecent";
+};
+
+type ApiFootballLineupPredictionsResponse = {
+  source: "apiFootballLive";
+  cached: boolean;
+  cachedAt: string;
+  expiresAt: string;
+  predictions: ApiFootballLineupPrediction[];
 };
 
 export type ApiFootballSnapshot = {
@@ -73,6 +98,14 @@ const callProxy = async <T>(request: ProxyRequest): Promise<T> => {
 
   if (request.fixtureIds?.length) {
     searchParams.set("fixtureIds", request.fixtureIds.slice(0, 20).join("-"));
+  }
+
+  if (request.teamId) {
+    searchParams.set("teamId", String(request.teamId));
+  }
+
+  if (request.before) {
+    searchParams.set("before", request.before);
   }
 
   if (request.status) {
@@ -134,6 +167,112 @@ const buildRefreshReport = (
   };
 };
 
+const getPredictionLineup = (
+  prediction: ApiFootballLineupPrediction,
+  timeZone?: string,
+): MatchLineup | undefined => {
+  const fixture = normalizeApiFootballFixtureResponse(
+    { response: [prediction.sourceFixture] },
+    [],
+    timeZone,
+    "apiFootballLive",
+  )[0];
+
+  if (!fixture) {
+    return undefined;
+  }
+
+  const lineup = getLineupForTeam(fixture, prediction.teamId);
+  if (!lineup || lineup.startingXI.length === 0) {
+    return undefined;
+  }
+
+  const source: MatchLineupSource = {
+    type: "previousFixture",
+    fixtureId: fixture.apiFootballFixtureId,
+    date: fixture.kickoffTimeUTC,
+    homeTeam: toLocalTeamName(fixture.homeTeam.name),
+    awayTeam: toLocalTeamName(fixture.awayTeam.name),
+    score: fixture.score.fullTime,
+    status: fixture.status.long,
+    note:
+      prediction.lookup === "worldCupSnapshot"
+        ? "API-FOOTBALL 尚未返回本场正式首发，暂以该队本届世界杯上一场比赛首发作为预测阵容。"
+        : "API-FOOTBALL 尚未返回本场正式首发，暂以该队最近一场已结束比赛首发作为预测阵容。",
+  };
+
+  return {
+    ...lineup,
+    source,
+    substitutes: [],
+  };
+};
+
+const applyLineupPredictions = (
+  fixturesData: FootballFixtureData[],
+  predictions: ApiFootballLineupPrediction[],
+  timeZone?: string,
+): FootballFixtureData[] => {
+  const predictionsByFixtureId = predictions.reduce<Map<number, ApiFootballLineupPrediction[]>>(
+    (accumulator, prediction) => {
+      if (typeof prediction.currentFixtureId !== "number") {
+        return accumulator;
+      }
+
+      const current = accumulator.get(prediction.currentFixtureId) ?? [];
+      current.push(prediction);
+      accumulator.set(prediction.currentFixtureId, current);
+      return accumulator;
+    },
+    new Map(),
+  );
+
+  return fixturesData.map((fixture) => {
+    if (typeof fixture.apiFootballFixtureId !== "number") {
+      return fixture;
+    }
+
+    const fixturePredictions = predictionsByFixtureId.get(fixture.apiFootballFixtureId);
+    if (!fixturePredictions?.length) {
+      return fixture;
+    }
+
+    const lineups = {
+      home: fixture.lineups.home,
+      away: fixture.lineups.away,
+    };
+
+    fixturePredictions.forEach((prediction) => {
+      const currentLineup = lineups[prediction.side];
+      if (currentLineup.startingXI.length > 0) {
+        return;
+      }
+
+      const predictedLineup = getPredictionLineup(prediction, timeZone);
+      if (predictedLineup) {
+        lineups[prediction.side] = predictedLineup;
+      }
+    });
+
+    return {
+      ...fixture,
+      lineups,
+    };
+  });
+};
+
+export const fetchApiFootballLineupPredictions = async (
+  timeZone?: string,
+  force = false,
+): Promise<ApiFootballLineupPrediction[]> => {
+  const payload = await callProxy<ApiFootballLineupPredictionsResponse>({
+    action: "lineupPredictions",
+    force,
+  });
+
+  return payload.predictions ?? [];
+};
+
 export const fetchApiFootballSnapshot = async (
   timeZone?: string,
   force = false,
@@ -151,10 +290,12 @@ export const fetchApiFootballSnapshot = async (
     timeZone,
     "apiFootballLive",
   );
+  const lineupPredictions = await fetchApiFootballLineupPredictions(timeZone, force).catch(() => []);
+  const detailsWithPredictions = applyLineupPredictions(details, lineupPredictions, timeZone);
 
   return {
-    fixtures: details,
-    report: buildRefreshReport(details, snapshot.cached),
+    fixtures: detailsWithPredictions,
+    report: buildRefreshReport(detailsWithPredictions, snapshot.cached),
     cached: snapshot.cached,
     cachedAt: snapshot.cachedAt,
     expiresAt: snapshot.expiresAt,
@@ -185,6 +326,68 @@ const getFixtureFromProxy = async (
   });
 
   return normalizeApiFootballFixtureResponse(payload, fixtures, timeZone, "apiFootballLive")[0];
+};
+
+const getLineupForTeam = (
+  fixture: FootballFixtureData,
+  teamId: number,
+): MatchLineup | undefined => {
+  if (fixture.homeTeam.id === teamId) {
+    return fixture.lineups.home;
+  }
+
+  if (fixture.awayTeam.id === teamId) {
+    return fixture.lineups.away;
+  }
+
+  return undefined;
+};
+
+export type PreviousTeamLineupPrediction = {
+  lineup: MatchLineup;
+  source: MatchLineupSource;
+};
+
+export const fetchPreviousTeamLineup = async (
+  teamId: number,
+  before: string,
+  timeZone?: string,
+): Promise<PreviousTeamLineupPrediction | undefined> => {
+  const payload = await callProxy<ApiFootballFixtureResponse>({
+    action: "previousTeamLineup",
+    teamId,
+    before,
+  });
+  const fixture = normalizeApiFootballFixtureResponse(payload, [], timeZone, "apiFootballLive")[0];
+
+  if (!fixture) {
+    return undefined;
+  }
+
+  const lineup = getLineupForTeam(fixture, teamId);
+  if (!lineup || lineup.startingXI.length === 0) {
+    return undefined;
+  }
+
+  const source: MatchLineupSource = {
+    type: "previousFixture",
+    fixtureId: fixture.apiFootballFixtureId,
+    date: fixture.kickoffTimeUTC,
+    homeTeam: toLocalTeamName(fixture.homeTeam.name),
+    awayTeam: toLocalTeamName(fixture.awayTeam.name),
+    score: fixture.score.fullTime,
+    status: fixture.status.long,
+    note: "API-FOOTBALL 尚未返回本场正式首发，暂以该队最近一场已结束比赛首发作为预测阵容。",
+  };
+
+  return {
+    lineup: {
+      ...lineup,
+      source,
+      substitutes: [],
+    },
+    source,
+  };
 };
 
 export const apiFootballProvider: FootballDataProvider = {

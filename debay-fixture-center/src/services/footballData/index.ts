@@ -3,6 +3,7 @@ import {
   apiFootballProvider,
   apiFootballEndpointMapping,
   fetchApiFootballSnapshot,
+  fetchPreviousTeamLineup,
 } from "./apiFootballProvider";
 import {
   getLocalFootballFixtureById,
@@ -30,5 +31,5 @@ export const refreshCompletedFixtures = () =>
 export const siteFixtures = fixtures;
 export const siteBaseTimeZones = baseTimeZones;
 export { apiFootballEndpointMapping, apiFootballProvider, localFootballDataProvider };
-export { fetchApiFootballSnapshot };
+export { fetchApiFootballSnapshot, fetchPreviousTeamLineup };
 export type * from "./types";

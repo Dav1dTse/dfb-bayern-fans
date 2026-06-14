@@ -1,5 +1,6 @@
 import type { BayernPlayer } from "../types";
 import { getPlayerImage } from "../data/playerImages";
+import { PlayerName } from "./PlayerName";
 
 export type BayernPlayerOption = BayernPlayer & {
   fixtureCount: number;
@@ -53,7 +54,7 @@ export function BayernPlayerFilter({
                   <span>{player.shirtNumber}</span>
                 )}
               </span>
-              <span>{player.name}</span>
+              <PlayerName name={player.name} showOriginalOnHover />
               <small>{player.country} · {player.fixtureCount}</small>
             </button>
           );

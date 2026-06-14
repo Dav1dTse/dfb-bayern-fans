@@ -64,6 +64,7 @@ export type FootballDataSource =
   | "apiFootballLive";
 
 export type MatchTeam = {
+  id?: number;
   name: string;
   shortName: string;
   flag?: string;
@@ -109,14 +110,41 @@ export type MatchEvent = {
 };
 
 export type MatchPlayer = {
+  id?: number | string;
   name: string;
   number: number | string;
   position: string;
+  grid?: string;
+  rating?: string;
+};
+
+export type MatchKitColor = {
+  primary?: string;
+  number?: string;
+  border?: string;
+};
+
+export type MatchLineupColors = {
+  player?: MatchKitColor;
+  goalkeeper?: MatchKitColor;
+};
+
+export type MatchLineupSource = {
+  type: "previousFixture";
+  fixtureId?: number;
+  date?: string;
+  homeTeam: string;
+  awayTeam: string;
+  score: MatchScore;
+  status?: string;
+  note?: string;
 };
 
 export type MatchLineup = {
   formation?: string;
   coach?: string;
+  colors?: MatchLineupColors;
+  source?: MatchLineupSource;
   startingXI: MatchPlayer[];
   substitutes: MatchPlayer[];
 };

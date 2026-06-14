@@ -15,6 +15,7 @@ const localToApiTeamNames: Record<string, string> = {
   摩洛哥: "Morocco",
   海地: "Haiti",
   苏格兰: "Scotland",
+  斯洛伐克: "Slovakia",
   澳大利亚: "Australia",
   土耳其: "Türkiye",
   德国: "Germany",
@@ -49,6 +50,7 @@ const localToApiTeamNames: Record<string, string> = {
   巴拿马: "Panama",
   乌兹别克斯坦: "Uzbekistan",
   哥伦比亚: "Colombia",
+  阿鲁巴: "Aruba",
 };
 
 const normalizeDateKey = (value: string): string => {
@@ -67,8 +69,18 @@ const normalizeTeamKey = (value: string): string =>
     .trim()
     .toLowerCase();
 
+const apiToLocalTeamNames = new Map(
+  Object.entries(localToApiTeamNames).map(([localName, apiName]) => [
+    normalizeTeamKey(apiName),
+    localName,
+  ]),
+);
+
 export const toApiTeamName = (localTeamName: string): string =>
   localToApiTeamNames[localTeamName] ?? localTeamName;
+
+export const toLocalTeamName = (apiTeamName: string): string =>
+  apiToLocalTeamNames.get(normalizeTeamKey(apiTeamName)) ?? apiTeamName;
 
 export const getFixtureMatchKey = ({
   kickoffTimeUTC,

@@ -38,10 +38,12 @@ const emptyOfficials: MatchOfficials = {
   avar: undefined,
 };
 
-const toMatchTeam = (teamName: string): MatchTeam => ({
+const toMatchTeam = (teamName: string, teamId?: number, logo?: string | null): MatchTeam => ({
+  id: teamId,
   name: teamName,
   shortName: getShortName(teamName),
   flag: getCountryFlagEmoji(teamName),
+  logo: logo ?? undefined,
 });
 
 const getJerseyImage = (
@@ -77,6 +79,8 @@ const getJerseys = (fixture: Fixture): MatchJersey[] => {
 const mergeLineup = (lineup?: Partial<MatchLineup>): MatchLineup => ({
   formation: lineup?.formation,
   coach: lineup?.coach,
+  colors: lineup?.colors ? { ...lineup.colors } : undefined,
+  source: lineup?.source ? { ...lineup.source, score: { ...lineup.source.score } } : undefined,
   startingXI: lineup?.startingXI ?? [],
   substitutes: lineup?.substitutes ?? [],
 });
@@ -107,8 +111,16 @@ export const toMatchViewModel = (
     status: footballFixture?.status.lifecycle ?? "scheduled",
     statusShort: footballFixture?.status.short ?? "NS",
     statusLabel: footballFixture?.status.long ?? "未开始",
-    homeTeam: toMatchTeam(fixture.homeTeam),
-    awayTeam: toMatchTeam(fixture.awayTeam),
+    homeTeam: toMatchTeam(
+      fixture.homeTeam,
+      footballFixture?.homeTeam.id,
+      footballFixture?.homeTeam.logo,
+    ),
+    awayTeam: toMatchTeam(
+      fixture.awayTeam,
+      footballFixture?.awayTeam.id,
+      footballFixture?.awayTeam.logo,
+    ),
     score,
     scoreDetail: footballFixture?.score ?? {
       regularTime: score,

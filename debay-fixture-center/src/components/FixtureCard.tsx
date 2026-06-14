@@ -3,7 +3,9 @@ import type { Fixture, Importance } from "../types";
 import { getCountryFlagEmoji, getCountryTheme } from "../data/countryThemes";
 import { getMatchKit } from "../data/matchKits";
 import { getPlayerImage } from "../data/playerImages";
+import { getPlayerDisplayName } from "../data/playerNameTranslations";
 import { getTeamKit } from "../data/teamKits";
+import { PlayerName } from "./PlayerName";
 import {
   formatCompactDate,
   formatDateTimeInTimeZone,
@@ -191,6 +193,7 @@ export function FixtureCard({ fixture, selected, timeZone, onToggle }: FixtureCa
           <div className="player-chips">
             {bayernPlayers.map((player) => {
               const playerImage = getPlayerImage(player.name);
+              const playerDisplayName = getPlayerDisplayName(player.name);
 
               return (
                 <span className="player-chip" key={`${fixture.id}-${player.name}`}>
@@ -198,12 +201,12 @@ export function FixtureCard({ fixture, selected, timeZone, onToggle }: FixtureCa
                     {playerImage ? (
                       <img src={playerImage.src} alt="" loading="lazy" />
                     ) : (
-                      <span>{player.name.slice(0, 1)}</span>
+                      <span>{playerDisplayName.slice(0, 1)}</span>
                     )}
                     <span className="shirt-number">{player.shirtNumber}</span>
                   </span>
                   <span>
-                    {player.name}
+                    <PlayerName name={player.name} showOriginalOnHover />
                     <small>{player.country} · {player.role}</small>
                   </span>
                 </span>
