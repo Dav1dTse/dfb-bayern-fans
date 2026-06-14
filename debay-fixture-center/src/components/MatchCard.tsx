@@ -30,21 +30,34 @@ const importanceLabel: Record<Importance, string> = {
 };
 
 const eventLabels: Record<MatchEventType, string> = {
+  assist: "助攻",
   goal: "进球",
   "yellow-card": "黄牌",
   "red-card": "红牌",
+  "second-yellow-card": "两黄变红",
   substitution: "换人",
   var: "VAR",
+  penalty: "点球",
   note: "提示",
 };
 
 const eventClassNames: Record<MatchEventType, string> = {
+  assist: "event-pill--assist",
   goal: "event-pill--goal",
   "yellow-card": "event-pill--yellow",
   "red-card": "event-pill--red",
+  "second-yellow-card": "event-pill--red",
   substitution: "event-pill--sub",
   var: "event-pill--var",
+  penalty: "event-pill--penalty",
   note: "event-pill--note",
+};
+
+const dataSourceLabels: Record<MatchViewModel["dataSource"], string> = {
+  manual: "手动维护",
+  localSeed: "本地 seed",
+  apiFootballMock: "API-FOOTBALL Mock",
+  apiFootballLive: "API-FOOTBALL Live",
 };
 
 const SelectIcon = ({ selected }: { selected: boolean }) => (
@@ -68,6 +81,41 @@ const DetailsIcon = ({ expanded }: { expanded: boolean }) => (
 
 const formatScore = (score: number | null): string => (score === null ? "-" : String(score));
 
+const formatUpdatedAt = (updatedAt?: string): string => {
+  if (!updatedAt) {
+    return "暂未同步";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(updatedAt));
+};
+
+const formatScoreText = (match: MatchViewModel): string => {
+  if (match.score.home === null || match.score.away === null) {
+    return match.status === "finished" ? "待同步" : `${formatScore(match.score.home)}-${formatScore(match.score.away)}`;
+  }
+
+  return `${match.score.home}-${match.score.away}`;
+};
+
+const getMissingDetailText = (match: MatchViewModel): string => {
+  const missingLabels: Array<[keyof MatchViewModel["dataCompleteness"], string]> = [
+    ["score", "比分"],
+    ["events", "事件"],
+    ["lineups", "阵容"],
+    ["referees", "裁判"],
+  ];
+  const missing = missingLabels
+    .filter(([field]) => !match.dataCompleteness[field])
+    .map(([, label]) => label);
+
+  return missing.length > 0 ? `待同步：${missing.join("、")}` : "详情已同步";
+};
+
 const TeamCell = ({
   flag,
   name,
@@ -83,38 +131,46 @@ const TeamCell = ({
   </div>
 );
 
-const EventPill = ({ event }: { event: MatchEvent }) => (
+const EventPill = ({ event, team }: { event: MatchEvent; team: MatchViewModel["homeTeam"] }) => (
   <li className={`event-pill ${eventClassNames[event.type]}`}>
     <span className="event-pill__minute">{event.minute}</span>
+    <span className="event-pill__team">{team.flag} {team.shortName}</span>
     <span className="event-pill__type">{eventLabels[event.type]}</span>
     <strong>{event.player}</strong>
+    {event.assist && <small>助攻 {event.assist}</small>}
     {event.detail && <small>{event.detail}</small>}
   </li>
 );
 
-const TeamEventColumn = ({
-  team,
+const EventTimeline = ({
   events,
+  homeTeam,
+  awayTeam,
 }: {
-  team: MatchViewModel["homeTeam"];
   events: MatchEvent[];
-}) => (
-  <section className="match-event-team">
-    <div className="match-event-team__header">
-      <span aria-hidden="true">{team.flag}</span>
-      <strong>{team.name}</strong>
-    </div>
-    {events.length > 0 ? (
-      <ul>
-        {events.map((event) => (
-          <EventPill event={event} key={event.id} />
-        ))}
-      </ul>
-    ) : (
-      <span className="match-events__empty">暂无事件</span>
-    )}
-  </section>
-);
+  homeTeam: MatchViewModel["homeTeam"];
+  awayTeam: MatchViewModel["awayTeam"];
+}) => {
+  const sortedEvents = [...events].sort((left, right) => {
+    const leftElapsed = left.elapsed ?? Number.MAX_SAFE_INTEGER;
+    const rightElapsed = right.elapsed ?? Number.MAX_SAFE_INTEGER;
+    const leftExtra = left.extra ?? 0;
+    const rightExtra = right.extra ?? 0;
+    return leftElapsed - rightElapsed || leftExtra - rightExtra;
+  });
+
+  return (
+    <ul className="match-events__timeline">
+      {sortedEvents.map((event) => (
+        <EventPill
+          event={event}
+          key={event.id}
+          team={event.team === "home" ? homeTeam : awayTeam}
+        />
+      ))}
+    </ul>
+  );
+};
 
 export function MatchCard({
   match,
@@ -130,8 +186,7 @@ export function MatchCard({
   const [expanded, setExpanded] = useState(false);
   const fixture = match.fixture;
   const bayernPlayers = fixture.relatedBayernPlayers;
-  const homeEvents = match.events.filter((event) => event.team === "home");
-  const awayEvents = match.events.filter((event) => event.team === "away");
+  const scoreText = formatScoreText(match);
   const cardClassName = [
     "match-card-shell",
     fixture.relatedToGermany ? "match-card-shell--germany" : "",
@@ -148,7 +203,9 @@ export function MatchCard({
       <div className="match-card" onClick={() => setExpanded((value) => !value)}>
         <div className="match-card__header">
           <div>
-            <span className="match-card__time">{match.kickoffTime}</span>
+            <span className="match-card__time">
+              {match.kickoffDate} {match.kickoffTime}
+            </span>
             <span>{match.competition}</span>
             <span>{match.stage}</span>
           </div>
@@ -160,21 +217,31 @@ export function MatchCard({
         <div className="scoreboard" aria-label={`${match.homeTeam.name} 对阵 ${match.awayTeam.name}`}>
           <TeamCell side="home" flag={match.homeTeam.flag} name={match.homeTeam.name} />
           <div className="scoreboard__center">
-            <strong>{formatScore(match.score.home)}-{formatScore(match.score.away)}</strong>
+            <strong className={scoreText === "待同步" ? "scoreboard__score--pending" : ""}>
+              {scoreText}
+            </strong>
             <span className={`match-status match-status--${match.status}`}>{match.statusLabel}</span>
+            <small>{match.statusShort}</small>
           </div>
           <TeamCell side="away" flag={match.awayTeam.flag} name={match.awayTeam.name} />
         </div>
 
         <div className="match-events">
           {match.events.length > 0 ? (
-            <div className="match-events__grid">
-              <TeamEventColumn team={match.homeTeam} events={homeEvents} />
-              <TeamEventColumn team={match.awayTeam} events={awayEvents} />
-            </div>
+            <EventTimeline
+              events={match.events}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
           ) : (
-            <p>暂无关键事件，赛前阵容与裁判信息将优先补充。</p>
+            <p>{match.status === "finished" ? "关键事件待同步，暂无详细数据。" : "暂无关键事件，赛前阵容与裁判信息将优先补充。"}</p>
           )}
+        </div>
+
+        <div className={`data-status data-status--${match.syncStatus}`}>
+          <span>{match.syncMessage ?? getMissingDetailText(match)}</span>
+          <span>更新：{formatUpdatedAt(match.lastUpdatedAt)}</span>
+          <span>来源：{dataSourceLabels[match.dataSource]}</span>
         </div>
 
         <div className="match-card__footer">

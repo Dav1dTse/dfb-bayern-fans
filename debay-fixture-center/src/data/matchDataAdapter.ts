@@ -1,19 +1,18 @@
 import { getCountryFlagEmoji } from "./countryThemes";
 import { fixtures } from "./fixtures";
 import { getMatchKit } from "./matchKits";
-import { mockMatchDetails } from "./mockMatchDetails";
 import { getTeamKit } from "./teamKits";
+import { getFootballFixtureById } from "../services/footballData";
 import type {
   Fixture,
   MatchJersey,
   MatchLineup,
   MatchOfficials,
-  MatchScore,
-  MatchStatus,
   MatchTeam,
   MatchViewModel,
 } from "../types";
 import { formatCompactDate, formatKickoffClock } from "../utils/time";
+import type { FootballFixtureData } from "../services/footballData";
 
 const getShortName = (teamName: string): string => {
   if (teamName.length <= 4) {
@@ -31,46 +30,12 @@ const getShortName = (teamName: string): string => {
   return teamName.slice(0, 4);
 };
 
-const emptyLineup: MatchLineup = {
-  formation: undefined,
-  startingXI: [],
-  substitutes: [],
-};
-
 const emptyOfficials: MatchOfficials = {
   referee: undefined,
   assistantReferees: [],
   fourthOfficial: undefined,
   var: undefined,
   avar: undefined,
-};
-
-const getDefaultStatus = (fixture: Fixture): MatchStatus => {
-  const kickoffTime = new Date(fixture.kickoffUtc).getTime();
-  const now = Date.now();
-  const matchWindowMs = 2 * 60 * 60 * 1000;
-
-  if (now >= kickoffTime + matchWindowMs) {
-    return "finished";
-  }
-
-  if (now >= kickoffTime) {
-    return "live";
-  }
-
-  return "scheduled";
-};
-
-const getStatusLabel = (status: MatchStatus): string => {
-  if (status === "finished") {
-    return "已结束";
-  }
-
-  if (status === "live") {
-    return "进行中";
-  }
-
-  return "未开始";
 };
 
 const toMatchTeam = (teamName: string): MatchTeam => ({
@@ -86,12 +51,6 @@ const getJerseyImage = (
 ): string | undefined => getMatchKit(fixture.matchNumber, side, teamName)?.src ?? getTeamKit(teamName)?.homeKitSrc;
 
 const getJerseys = (fixture: Fixture): MatchJersey[] => {
-  const mockJerseys = mockMatchDetails[fixture.id]?.jerseys;
-
-  if (mockJerseys) {
-    return mockJerseys;
-  }
-
   const homeKit = getJerseyImage(fixture, "home", fixture.homeTeam);
   const awayKit = getJerseyImage(fixture, "away", fixture.awayTeam);
 
@@ -117,40 +76,70 @@ const getJerseys = (fixture: Fixture): MatchJersey[] => {
 
 const mergeLineup = (lineup?: Partial<MatchLineup>): MatchLineup => ({
   formation: lineup?.formation,
+  coach: lineup?.coach,
   startingXI: lineup?.startingXI ?? [],
   substitutes: lineup?.substitutes ?? [],
 });
 
-export const toMatchViewModel = (fixture: Fixture, timeZone: string): MatchViewModel => {
-  const mock = mockMatchDetails[fixture.id];
-  const status = mock?.status ?? getDefaultStatus(fixture);
-  const score: MatchScore = mock?.score ?? {
-    home: status === "finished" ? 0 : null,
-    away: status === "finished" ? 0 : null,
-  };
+export const toMatchViewModel = (
+  fixture: Fixture,
+  timeZone: string,
+  footballFixtureOverride?: FootballFixtureData,
+): MatchViewModel => {
+  const footballFixture = footballFixtureOverride ?? getFootballFixtureById(fixture.id, timeZone);
+  const score = footballFixture?.score.fullTime ?? { home: null, away: null };
+  const kickoffTimeUTC = footballFixture?.kickoffTimeUTC ?? fixture.kickoffUtc;
+  const kickoffTime = formatKickoffClock(kickoffTimeUTC, timeZone);
+  const kickoffDate = formatCompactDate(kickoffTimeUTC, timeZone);
 
   return {
     id: fixture.id,
+    fixtureId: footballFixture?.fixtureId ?? fixture.id,
+    apiFootballFixtureId: footballFixture?.apiFootballFixtureId,
     fixture,
     competition: fixture.competition.replace("2026 FIFA ", ""),
     stage: fixture.stage,
-    kickoffTime: formatKickoffClock(fixture.kickoffUtc, timeZone),
-    kickoffDate: formatCompactDate(fixture.kickoffUtc, timeZone),
-    status,
-    statusLabel: getStatusLabel(status),
+    kickoffTime,
+    kickoffDate,
+    kickoffTimeUTC,
+    userTimezoneDisplayTime: footballFixture?.userTimezoneDisplayTime ?? `${kickoffDate} ${kickoffTime}`,
+    venue: footballFixture?.venue.name ?? fixture.venue,
+    status: footballFixture?.status.lifecycle ?? "scheduled",
+    statusShort: footballFixture?.status.short ?? "NS",
+    statusLabel: footballFixture?.status.long ?? "未开始",
     homeTeam: toMatchTeam(fixture.homeTeam),
     awayTeam: toMatchTeam(fixture.awayTeam),
     score,
-    events: mock?.events ?? [],
+    scoreDetail: footballFixture?.score ?? {
+      regularTime: score,
+      fullTime: score,
+      extraTime: { home: null, away: null },
+      penalties: { home: null, away: null },
+    },
+    events: footballFixture?.events ?? [],
     lineups: {
-      home: mergeLineup(mock?.lineups?.home ?? emptyLineup),
-      away: mergeLineup(mock?.lineups?.away ?? emptyLineup),
+      home: mergeLineup(footballFixture?.lineups.home),
+      away: mergeLineup(footballFixture?.lineups.away),
     },
     officials: {
       ...emptyOfficials,
-      ...mock?.officials,
+      ...footballFixture?.referees,
+    },
+    referees: {
+      ...emptyOfficials,
+      ...footballFixture?.referees,
     },
     jerseys: getJerseys(fixture),
+    lastUpdatedAt: footballFixture?.lastUpdatedAt,
+    dataSource: footballFixture?.dataSource ?? "localSeed",
+    dataCompleteness: footballFixture?.dataCompleteness ?? {
+      score: false,
+      events: false,
+      lineups: false,
+      referees: false,
+    },
+    syncStatus: footballFixture?.syncStatus ?? "pending",
+    syncMessage: footballFixture?.syncMessage,
   };
 };
 

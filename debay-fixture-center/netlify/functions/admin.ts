@@ -1,5 +1,4 @@
 import { fixtures } from "../../src/data/fixtures";
-import { mockMatchDetails } from "../../src/data/mockMatchDetails";
 import { calculateEligibleParticipants } from "../../src/lib/lottery/calculateEligibleParticipants";
 import { defaultEligibleMode } from "../../src/lib/lottery/mockLotteryData";
 import { runLotteryDraw } from "../../src/lib/lottery/runLotteryDraw";
@@ -10,6 +9,8 @@ import type {
   PredictionMatchConfig,
 } from "../../src/lib/lottery/types";
 import type { AdminDrawInput, AdminPredictionConfigInput, OnlinePrediction } from "../../src/lib/online/types";
+import { getLocalFootballFixtureById } from "../../src/services/footballData/localProvider";
+import { getFixtureMatchKey, getSiteFixtureMap } from "../../src/services/footballData/teamAliases";
 import {
   buildPredictionCounts,
   connectBlobs,
@@ -42,9 +43,20 @@ const maxAuthFailures = 8;
 const authWindowMs = 15 * 60 * 1000;
 const authLockMs = 15 * 60 * 1000;
 
-const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredictionSnapshot[] =>
+type FinalScore = {
+  home: number;
+  away: number;
+};
+
+const apiFootballBaseUrl = "https://v3.football.api-sports.io";
+
+const toPredictionSnapshots = (
+  predictions: OnlinePrediction[],
+  apiScoreByMatchId: Map<string, FinalScore>,
+): LotteryPredictionSnapshot[] =>
   predictions.map((prediction) => {
-    const score = mockMatchDetails[prediction.matchId]?.score;
+    const score = apiScoreByMatchId.get(prediction.matchId) ??
+      getLocalFootballFixtureById(prediction.matchId)?.score.fullTime;
     const finalHomeScore = score?.home;
     const finalAwayScore = score?.away;
     const hasFinalScore =
@@ -77,6 +89,63 @@ const toPredictionSnapshots = (predictions: OnlinePrediction[]): LotteryPredicti
       isOutcomeHit: Boolean(hasFinalScore && actualOutcome === predictedOutcome),
     };
   });
+
+const loadApiFinalScoreByMatchId = async (): Promise<Map<string, FinalScore>> => {
+  if (process.env.API_FOOTBALL_ENABLED !== "true" || !process.env.API_FOOTBALL_KEY) {
+    return new Map();
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.API_FOOTBALL_BASE_URL ?? apiFootballBaseUrl}/fixtures?league=1&season=2026`,
+      {
+        headers: {
+          accept: "application/json",
+          "x-apisports-key": process.env.API_FOOTBALL_KEY,
+        },
+      },
+    );
+    const payload = await response.json();
+    const siteFixtureByKey = getSiteFixtureMap(fixtures);
+    const scoreByMatchId = new Map<string, FinalScore>();
+
+    (payload.response ?? []).forEach((apiFixture: {
+      fixture?: { date?: string; status?: { short?: string } };
+      teams?: { home?: { name?: string }; away?: { name?: string } };
+      goals?: { home?: number | null; away?: number | null };
+      score?: { fulltime?: { home?: number | null; away?: number | null } };
+    }) => {
+      if (!["FT", "AET", "PEN"].includes(apiFixture.fixture?.status?.short ?? "")) {
+        return;
+      }
+
+      const siteFixture = siteFixtureByKey.get(
+        getFixtureMatchKey({
+          kickoffTimeUTC: apiFixture.fixture?.date ?? "",
+          homeTeam: apiFixture.teams?.home?.name ?? "",
+          awayTeam: apiFixture.teams?.away?.name ?? "",
+        }),
+      );
+      const homeScore = apiFixture.score?.fulltime?.home ?? apiFixture.goals?.home;
+      const awayScore = apiFixture.score?.fulltime?.away ?? apiFixture.goals?.away;
+
+      if (
+        siteFixture &&
+        typeof homeScore === "number" &&
+        typeof awayScore === "number"
+      ) {
+        scoreByMatchId.set(siteFixture.id, {
+          home: homeScore,
+          away: awayScore,
+        });
+      }
+    });
+
+    return scoreByMatchId;
+  } catch {
+    return new Map();
+  }
+};
 
 const authorize = (headers: Record<string, string | undefined>) => {
   const configuredPassword = process.env.ADMIN_PASSWORD;
@@ -276,10 +345,11 @@ export const handler = async (event: {
     }
 
     const eligibleMode = (body.eligibleMode || predictionConfig.eligibleMode) as LotteryEligibleMode;
+    const apiScoreByMatchId = await loadApiFinalScoreByMatchId();
     const eligibleParticipants = calculateEligibleParticipants({
       matchId: body.matchId,
       eligibleMode,
-      predictions: toPredictionSnapshots(predictions),
+      predictions: toPredictionSnapshots(predictions, apiScoreByMatchId),
       manualList: body.manualList,
     });
 

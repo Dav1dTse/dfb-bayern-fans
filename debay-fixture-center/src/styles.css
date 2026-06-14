@@ -617,6 +617,13 @@ main {
   font-weight: 800;
 }
 
+.list-heading__sync {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .section-caption {
   color: var(--red-dark);
   font-size: 12px;
@@ -1418,6 +1425,19 @@ main {
   line-height: 1;
 }
 
+.scoreboard__score--pending {
+  max-width: 120px;
+  font-size: 22px !important;
+  line-height: 1.08 !important;
+  text-align: center;
+}
+
+.scoreboard__center small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 1000;
+}
+
 .match-status {
   display: inline-flex;
   min-height: 28px;
@@ -1449,6 +1469,14 @@ main {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.match-events__timeline {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .match-event-team {
@@ -1522,9 +1550,19 @@ main {
   color: var(--muted);
 }
 
+.event-pill__team {
+  color: #403d38;
+  font-weight: 1000;
+}
+
 .event-pill small {
   color: var(--muted);
   font-weight: 800;
+}
+
+.event-pill--assist {
+  border-color: rgba(23, 44, 88, 0.2);
+  background: rgba(23, 44, 88, 0.07);
 }
 
 .event-pill--goal {
@@ -1540,6 +1578,52 @@ main {
 .event-pill--red {
   border-color: rgba(215, 25, 32, 0.35);
   background: rgba(215, 25, 32, 0.1);
+}
+
+.event-pill--penalty,
+.event-pill--var {
+  border-color: rgba(23, 44, 88, 0.22);
+  background: rgba(23, 44, 88, 0.08);
+}
+
+.event-pill--sub,
+.event-pill--note {
+  border-color: rgba(124, 117, 105, 0.22);
+  background: rgba(247, 244, 237, 0.82);
+}
+
+.data-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  border: 1px solid rgba(226, 220, 207, 0.88);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.data-status span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+}
+
+.data-status--pending,
+.data-status--partial {
+  border-color: rgba(244, 196, 48, 0.42);
+  background: rgba(244, 196, 48, 0.12);
+  color: #6c4d00;
+}
+
+.data-status--synced {
+  border-color: rgba(31, 122, 84, 0.2);
+  background: rgba(31, 122, 84, 0.08);
+  color: var(--green);
 }
 
 .match-card__footer {
@@ -2146,6 +2230,28 @@ main {
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
+}
+
+.detail-coach {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: rgba(247, 244, 237, 0.82);
+  font-size: 12px;
+}
+
+.detail-coach span {
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.detail-coach strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-weight: 1000;
 }
 
 .detail-subsection + .detail-subsection {

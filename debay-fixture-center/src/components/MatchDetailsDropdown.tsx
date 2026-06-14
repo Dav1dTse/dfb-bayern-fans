@@ -11,7 +11,7 @@ type MatchDetailsDropdownProps = {
   officials: MatchOfficials;
 };
 
-const EmptyState = () => <span className="detail-empty">暂无数据</span>;
+const EmptyState = () => <span className="detail-empty">暂未确认</span>;
 
 const PlayerList = ({
   players,
@@ -28,7 +28,7 @@ const PlayerList = ({
     <>
       {expectedCount && players.length < expectedCount && (
         <span className="detail-note">
-          当前仅有 {players.length}/{expectedCount} 人，待接入官方完整数据
+          当前仅有 {players.length}/{expectedCount} 人，待同步官方完整数据
         </span>
       )}
       <ul className="lineup-list">
@@ -51,6 +51,11 @@ const TeamLineup = ({ team, lineup }: { team: MatchTeam; lineup: MatchLineup }) 
       <span>{lineup.formation ?? "阵型暂无"}</span>
     </div>
 
+    <div className="detail-coach">
+      <span>主教练</span>
+      <strong>{lineup.coach ?? "暂未确认"}</strong>
+    </div>
+
     <div className="detail-subsection">
       <span className="detail-label">首发阵容</span>
       <PlayerList players={lineup.startingXI} expectedCount={11} />
@@ -69,7 +74,7 @@ const OfficialRow = ({ label, value }: { label: string; value?: string | string[
   return (
     <div className="official-row">
       <span>{label}</span>
-      <strong>{text && text.length > 0 ? text : "暂无数据"}</strong>
+      <strong>{text && text.length > 0 ? text : "暂未确认"}</strong>
     </div>
   );
 };

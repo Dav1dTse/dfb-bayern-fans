@@ -7,12 +7,18 @@ import { MatchCard } from "./components/MatchCard";
 import { SearchBar } from "./components/SearchBar";
 import { SelectedFixturesPanel } from "./components/SelectedFixturesPanel";
 import { TimezoneSelector } from "./components/TimezoneSelector";
-import { baseTimeZones, fixtures } from "./data/fixtures";
 import { toMatchViewModel } from "./data/matchDataAdapter";
 import { fetchPublicOnlineState, submitOnlinePrediction } from "./lib/online/apiClient";
 import { defaultPredictionMatchConfigs } from "./lib/lottery/mockLotteryData";
 import { toLotteryPredictionSnapshots } from "./lib/online/predictionSnapshots";
+import {
+  fetchApiFootballSnapshot,
+  refreshCompletedFixtures,
+  siteBaseTimeZones as baseTimeZones,
+  siteFixtures as fixtures,
+} from "./services/footballData";
 import type { PublicOnlineState, SubmitPredictionInput } from "./lib/online/types";
+import type { FootballFixtureData } from "./services/footballData";
 import type { Fixture, FixtureFilter } from "./types";
 import { getBrowserTimeZone } from "./utils/time";
 
@@ -44,6 +50,8 @@ function FixtureApp() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBayernPlayer, setSelectedBayernPlayer] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [completedSyncSummary, setCompletedSyncSummary] = useState("");
+  const [apiFootballFixtures, setApiFootballFixtures] = useState<FootballFixtureData[]>([]);
   const [onlineState, setOnlineState] = useState<PublicOnlineState>({
     predictions: [],
     predictionCounts: [],
@@ -56,14 +64,55 @@ function FixtureApp() {
     fetchPublicOnlineState().then(setOnlineState);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    setCompletedSyncSummary("正在从 API-FOOTBALL 同步赛程和比赛详情...");
+    fetchApiFootballSnapshot(timeZone)
+      .then((snapshot) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setApiFootballFixtures(snapshot.fixtures);
+        setCompletedSyncSummary(
+          `API-FOOTBALL 已同步 ${snapshot.fixtures.length} 场，已检查 ${snapshot.report.checkedFixtureIds.length} 场完场比赛，${snapshot.report.pendingFixtureIds.length} 场仍有详情待同步。`,
+        );
+      })
+      .catch(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        const report = refreshCompletedFixtures();
+        setCompletedSyncSummary(
+          report.pendingFixtureIds.length > 0
+            ? `本地 seed 已检查 ${report.checkedFixtureIds.length} 场完场比赛，${report.pendingFixtureIds.length} 场仍有详情待同步。`
+            : `本地 seed 已检查 ${report.checkedFixtureIds.length} 场完场比赛，详情数据完整。`,
+        );
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [timeZone]);
+
   const timeZoneOptions = useMemo(
     () => Array.from(new Set([browserTimeZone, ...baseTimeZones])),
     [browserTimeZone],
   );
 
+  const apiFootballFixtureById = useMemo(
+    () => new Map(apiFootballFixtures.map((fixture) => [fixture.fixtureId, fixture])),
+    [apiFootballFixtures],
+  );
+
   const matchViewModels = useMemo(
-    () => fixtures.map((fixture) => toMatchViewModel(fixture, timeZone)),
-    [timeZone],
+    () =>
+      fixtures.map((fixture) =>
+        toMatchViewModel(fixture, timeZone, apiFootballFixtureById.get(fixture.id)),
+      ),
+    [apiFootballFixtureById, timeZone],
   );
 
   const matchViewModelById = useMemo(
@@ -242,6 +291,9 @@ function FixtureApp() {
             <div>
               <span className="section-caption">比赛时间换算</span>
               <h2>赛程列表</h2>
+              {completedSyncSummary && (
+                <p className="list-heading__sync">{completedSyncSummary}</p>
+              )}
             </div>
             <span>{filteredFixtures.length} 场匹配</span>
           </div>

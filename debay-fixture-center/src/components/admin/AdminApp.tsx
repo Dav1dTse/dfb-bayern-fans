@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { PredictionConfigPanel } from "./PredictionConfigPanel";
 import { LotteryAdminPanel } from "../lottery/LotteryAdminPanel";
-import { baseTimeZones, fixtures } from "../../data/fixtures";
 import { toMatchViewModel } from "../../data/matchDataAdapter";
 import { defaultPredictionMatchConfigs } from "../../lib/lottery/mockLotteryData";
 import {
@@ -15,6 +14,10 @@ import type {
   AdminOnlineState,
   AdminPredictionConfigInput,
 } from "../../lib/online/types";
+import {
+  siteBaseTimeZones as baseTimeZones,
+  siteFixtures as fixtures,
+} from "../../services/footballData";
 import { getBrowserTimeZone } from "../../utils/time";
 
 export function AdminApp() {
