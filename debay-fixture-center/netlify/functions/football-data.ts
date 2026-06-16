@@ -9,12 +9,17 @@ const storeName = "debay-fixture-center";
 const snapshotCacheKey = "api-football-world-cup-2026-snapshot.json";
 const lineupPredictionsCacheKey = "api-football-lineup-predictions-v2.json";
 const snapshotCacheMs = {
-  live: 60 * 60 * 1000,
-  matchDay: 6 * 60 * 60 * 1000,
-  settled: 24 * 60 * 60 * 1000,
+  live: 15 * 60 * 1000,
+  lineupWindow: 15 * 60 * 1000,
+  settled: 60 * 60 * 1000,
 };
 const snapshotFailureCooldownMs = 60 * 60 * 1000;
 const lineupPredictionsMinCacheMs = 5 * 60 * 1000;
+const detailRefreshWindowMs = {
+  beforeKickoff: 3 * 60 * 60 * 1000,
+  afterKickoff: 4 * 60 * 60 * 1000,
+  recentlyFinished: 12 * 60 * 60 * 1000,
+};
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -40,10 +45,10 @@ const endpointMapping = {
 };
 
 const cacheStrategy = {
-  scheduled: "daily or manual refresh",
-  matchDay: "medium frequency refresh before kickoff for venue, time and lineup previews",
-  live: "15 seconds after API_FOOTBALL_ENABLED is true",
-  finished: "refresh several times after FT/AET/PEN, then reduce to daily once settled",
+  scheduled: "15-minute scheduler; API snapshot refreshes hourly when no match is near",
+  matchDay: "15-minute API refresh inside the lineup and match detail window",
+  live: "15-minute cached API refresh while a match is live",
+  finished: "refresh recent finished matches, then fall back to hourly list checks",
 };
 
 type NetlifyEvent = {
@@ -407,20 +412,52 @@ const chunk = <T>(items: T[], size: number): T[][] => {
   return chunks;
 };
 
+const getFixtureTime = (fixture: ApiFootballFixture): number =>
+  fixture.fixture?.date ? new Date(fixture.fixture.date).getTime() : Number.NaN;
+
+const isFixtureInDetailRefreshWindow = (
+  fixture: ApiFootballFixture,
+  now = Date.now(),
+): boolean => {
+  const statusShort = fixture.fixture?.status?.short ?? "";
+  if (liveStatusCodes.has(statusShort)) {
+    return true;
+  }
+
+  const fixtureTime = getFixtureTime(fixture);
+  if (!Number.isFinite(fixtureTime)) {
+    return false;
+  }
+
+  const untilKickoff = fixtureTime - now;
+  const afterKickoff = now - fixtureTime;
+  if (finalStatusCodes.has(statusShort)) {
+    return afterKickoff >= 0 && afterKickoff <= detailRefreshWindowMs.recentlyFinished;
+  }
+
+  return (
+    untilKickoff <= detailRefreshWindowMs.beforeKickoff &&
+    afterKickoff <= detailRefreshWindowMs.afterKickoff
+  );
+};
+
+const getDetailRefreshFixtureIds = (fixtures: ApiFootballFixture[]): string[] =>
+  fixtures
+    .filter((fixture) => isFixtureInDetailRefreshWindow(fixture))
+    .map((fixture) => fixture.fixture?.id)
+    .filter((fixtureId): fixtureId is number => typeof fixtureId === "number")
+    .map(String);
+
 const getSnapshotTtlMs = (fixtures: ApiFootballFixture[]): number => {
   if (fixtures.some((fixture) => liveStatusCodes.has(fixture.fixture?.status?.short ?? ""))) {
     return snapshotCacheMs.live;
   }
 
-  const now = Date.now();
-  const hasTodayFixture = fixtures.some((fixture) => {
-    const fixtureTime = fixture.fixture?.date
-      ? new Date(fixture.fixture.date).getTime()
-      : Number.NaN;
-    return Math.abs(fixtureTime - now) <= 18 * 60 * 60 * 1000;
-  });
+  if (fixtures.some((fixture) => isFixtureInDetailRefreshWindow(fixture))) {
+    return snapshotCacheMs.lineupWindow;
+  }
 
-  return hasTodayFixture ? snapshotCacheMs.matchDay : snapshotCacheMs.settled;
+  return snapshotCacheMs.settled;
 };
 
 const buildSnapshot = async (
@@ -432,15 +469,13 @@ const buildSnapshot = async (
     apiKey,
     endpointMapping.fixtures,
   );
-  const fixtureIds = (fixturesPayload.response ?? [])
-    .map((fixture) => fixture.fixture?.id)
-    .filter((fixtureId): fixtureId is number => typeof fixtureId === "number");
+  const fixtureIds = getDetailRefreshFixtureIds(fixturesPayload.response ?? []);
   const detailPayloads = await Promise.all(
     chunk(fixtureIds, FIXTURE_BATCH_SIZE).map((fixtureIdBatch) =>
       readApiResponse<ApiFootballFixture>(
         baseUrl,
         apiKey,
-        endpointMapping.fixturesByIds(fixtureIdBatch.map(String)),
+        endpointMapping.fixturesByIds(fixtureIdBatch),
       ),
     ),
   );
@@ -467,9 +502,6 @@ const isFinishedFixtureBefore = (
 
   return finalStatusCodes.has(statusShort) && Number.isFinite(fixtureDate) && fixtureDate < beforeDate;
 };
-
-const getFixtureTime = (fixture: ApiFootballFixture): number =>
-  fixture.fixture?.date ? new Date(fixture.fixture.date).getTime() : Number.NaN;
 
 const getFixtureTeamSide = (
   fixture: ApiFootballFixture,
@@ -679,6 +711,23 @@ export const refreshFootballDataCaches = async (
     };
   }
 
+  if (!forceRefresh) {
+    return {
+      source: "apiFootballLive",
+      cacheEnabled,
+      snapshot: {
+        cached: snapshot.cached,
+        cachedAt: snapshot.cachedAt,
+        expiresAt: snapshot.expiresAt,
+      },
+      lineupPredictions: {
+        cached: false,
+        skipped: true,
+        count: 0,
+      },
+    };
+  }
+
   const predictions = await buildLineupPredictions(baseUrl, apiKey, snapshot);
   const cachedAt = new Date().toISOString();
   const expiresAt = getLineupPredictionsExpiresAt(snapshot);
@@ -820,8 +869,20 @@ export const handler = async (event: NetlifyEvent) => {
       });
     }
 
+    if (!forceRefresh) {
+      const cachedAt = new Date().toISOString();
+      return jsonResponse(200, {
+        source: "apiFootballLive",
+        cached: false,
+        skipped: true,
+        cachedAt,
+        expiresAt: new Date(Date.now() + lineupPredictionsMinCacheMs).toISOString(),
+        predictions: [],
+      });
+    }
+
     try {
-      const snapshot = await getSnapshotForRequest(baseUrl, apiKey, cacheEnabled, forceRefresh, !forceRefresh);
+      const snapshot = await getSnapshotForRequest(baseUrl, apiKey, cacheEnabled, forceRefresh);
       const predictions = await buildLineupPredictions(baseUrl, apiKey, snapshot);
       const cachedAt = new Date().toISOString();
       const expiresAt = getLineupPredictionsExpiresAt(snapshot);

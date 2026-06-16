@@ -6,11 +6,11 @@ export const API_FOOTBALL_WORLD_CUP = {
 };
 
 export const FOOTBALL_REFRESH_INTERVAL_MS = {
-  scheduled: 24 * 60 * 60 * 1000,
-  matchDay: 6 * 60 * 60 * 1000,
-  live: 15 * 1000,
-  recentlyFinished: 10 * 60 * 1000,
-  settledFinished: 24 * 60 * 60 * 1000,
+  scheduled: 60 * 60 * 1000,
+  matchDay: 15 * 60 * 1000,
+  live: 15 * 60 * 1000,
+  recentlyFinished: 15 * 60 * 1000,
+  settledFinished: 60 * 60 * 1000,
 };
 
 export const API_FOOTBALL_RATE_LIMIT_POLICY = {

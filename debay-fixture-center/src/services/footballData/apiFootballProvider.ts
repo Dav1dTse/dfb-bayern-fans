@@ -315,15 +315,25 @@ export const fetchApiFootballSnapshot = async (
     force,
   });
   assertUsableSnapshot(snapshot);
-  const detailPayload: ApiFootballFixtureResponse = {
-    response: snapshot.detailPayloads.flatMap((payload) => payload.response ?? []),
-  };
-  const details = normalizeApiFootballFixtureResponse(
-    detailPayload.response?.length ? detailPayload : snapshot.fixturesPayload,
+  const listDetails = normalizeApiFootballFixtureResponse(
+    snapshot.fixturesPayload,
     fixtures,
     timeZone,
     "apiFootballLive",
   );
+  const detailPayload: ApiFootballFixtureResponse = {
+    response: snapshot.detailPayloads.flatMap((payload) => payload.response ?? []),
+  };
+  const detailDetails = detailPayload.response?.length
+    ? normalizeApiFootballFixtureResponse(detailPayload, fixtures, timeZone, "apiFootballLive")
+    : [];
+  const detailsByFixtureId = new Map(
+    listDetails.map((fixture) => [fixture.fixtureId, fixture] as const),
+  );
+  detailDetails.forEach((fixture) => {
+    detailsByFixtureId.set(fixture.fixtureId, fixture);
+  });
+  const details = Array.from(detailsByFixtureId.values());
   const lineupPredictions = await fetchApiFootballLineupPredictions(timeZone, force).catch(() => []);
   const detailsWithPredictions = applyLineupPredictions(details, lineupPredictions, timeZone);
 
