@@ -40,7 +40,7 @@ import type { OnlinePrediction, PublicOnlineState, SubmitPredictionInput } from 
 import { useResponsiveMode } from "./hooks/useResponsiveMode";
 import {
   fetchApiFootballSnapshot,
-  refreshCompletedFixtures,
+  getFootballFixtures,
   siteBaseTimeZones as baseTimeZones,
 } from "./services/footballData";
 import type { FootballFixtureData } from "./services/footballData";
@@ -1097,7 +1097,7 @@ function FixtureApp() {
           return;
         }
 
-        refreshCompletedFixtures();
+        setApiFootballFixtures(getFootballFixtures(timeZone));
       });
 
     return () => {

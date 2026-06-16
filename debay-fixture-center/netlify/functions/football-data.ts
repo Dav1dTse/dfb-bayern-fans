@@ -7,6 +7,7 @@ const DEFAULT_BASE_URL = "https://v3.football.api-sports.io";
 const FIXTURE_BATCH_SIZE = 20;
 const storeName = "debay-fixture-center";
 const snapshotCacheKey = "api-football-world-cup-2026-snapshot.json";
+const snapshotFailureCacheKey = "api-football-world-cup-2026-snapshot-failure.json";
 const lineupPredictionsCacheKey = "api-football-lineup-predictions-v2.json";
 const snapshotCacheMs = {
   live: 15 * 60 * 1000,
@@ -100,6 +101,12 @@ type SnapshotCache = {
   expiresAt: string;
   fixturesPayload: ApiFootballResponse<ApiFootballFixture>;
   detailPayloads: Array<ApiFootballResponse<ApiFootballFixture>>;
+};
+
+type SnapshotFailureCache = {
+  cachedAt: string;
+  expiresAt: string;
+  error: string;
 };
 
 type LineupPrediction = {
@@ -252,6 +259,26 @@ const saveSnapshotCache = async (
   }
 };
 
+const loadSnapshotFailureCache = async (
+  cacheEnabled: boolean,
+): Promise<SnapshotFailureCache | undefined> => {
+  if (!cacheEnabled) {
+    return undefined;
+  }
+
+  try {
+    const cached = await getFootballStore().get(snapshotFailureCacheKey, { type: "json" });
+    if (!cached || typeof cached !== "object") {
+      return undefined;
+    }
+
+    const failure = cached as SnapshotFailureCache;
+    return isCacheFresh(failure.expiresAt) ? failure : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const saveSnapshotFailureCache = async (
   cacheEnabled: boolean,
   error: unknown,
@@ -265,18 +292,11 @@ const saveSnapshotFailureCache = async (
   const message = error instanceof Error ? error.message : "Unknown upstream snapshot failure";
 
   try {
-    await getFootballStore().setJSON(snapshotCacheKey, {
+    await getFootballStore().setJSON(snapshotFailureCacheKey, {
       cachedAt,
       expiresAt,
-      fixturesPayload: {
-        errors: {
-          snapshotRefresh: message,
-        },
-        results: 0,
-        response: [],
-      },
-      detailPayloads: [],
-    } satisfies SnapshotCache);
+      error: message,
+    } satisfies SnapshotFailureCache);
   } catch {
     // Failure cooldown writes should not block the response.
   }
@@ -631,15 +651,27 @@ const getSnapshotForRequest = async (
   }
 
   const rawSnapshot = forceRefresh ? undefined : await loadRawSnapshotCache(cacheEnabled);
-  if (
+  const legacyFailureMessage =
     rawSnapshot &&
     !isUsableSnapshotCache(rawSnapshot) &&
     isCacheFresh(rawSnapshot.expiresAt)
-  ) {
-    throw new Error(`Cached API-FOOTBALL snapshot is invalid: ${getSnapshotCacheError(rawSnapshot)}`);
-  }
+      ? getSnapshotCacheError(rawSnapshot)
+      : undefined;
 
   const staleSnapshot = await loadSnapshotCache(cacheEnabled, { allowStale: true });
+  const recentFailure = forceRefresh ? undefined : await loadSnapshotFailureCache(cacheEnabled);
+  const recentFailureMessage = recentFailure?.error ?? legacyFailureMessage;
+
+  if (recentFailureMessage) {
+    if (staleSnapshot) {
+      return {
+        cached: true,
+        ...staleSnapshot,
+      };
+    }
+
+    throw new Error(`Recent API-FOOTBALL snapshot refresh failed: ${recentFailureMessage}`);
+  }
 
   try {
     const snapshot = await buildSnapshot(baseUrl, apiKey);
