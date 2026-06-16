@@ -13,6 +13,7 @@ const snapshotCacheMs = {
   matchDay: 6 * 60 * 60 * 1000,
   settled: 24 * 60 * 60 * 1000,
 };
+const snapshotFailureCooldownMs = 60 * 60 * 1000;
 const lineupPredictionsMinCacheMs = 5 * 60 * 1000;
 
 declare const process: {
@@ -181,9 +182,27 @@ const isUsableSnapshotCache = (snapshot: SnapshotCache): boolean =>
   (snapshot.fixturesPayload.response?.length ?? 0) > 0 &&
   snapshot.detailPayloads.every((payload) => isUsableApiResponse(payload));
 
-const loadSnapshotCache = async (
+const getSnapshotCacheError = (snapshot: SnapshotCache): string | undefined => {
+  if (hasApiFootballErrors(snapshot.fixturesPayload.errors)) {
+    return JSON.stringify(snapshot.fixturesPayload.errors);
+  }
+
+  const detailErrorPayload = snapshot.detailPayloads.find((payload) =>
+    hasApiFootballErrors(payload.errors),
+  );
+  if (detailErrorPayload) {
+    return JSON.stringify(detailErrorPayload.errors);
+  }
+
+  if ((snapshot.fixturesPayload.response?.length ?? 0) === 0) {
+    return "snapshot fixture list is empty";
+  }
+
+  return undefined;
+};
+
+const loadRawSnapshotCache = async (
   cacheEnabled: boolean,
-  options: CacheReadOptions = {},
 ): Promise<SnapshotCache | undefined> => {
   if (!cacheEnabled) {
     return undefined;
@@ -195,15 +214,22 @@ const loadSnapshotCache = async (
       return undefined;
     }
 
-    const snapshot = cached as SnapshotCache;
-    if (!isUsableSnapshotCache(snapshot)) {
-      return undefined;
-    }
-
-    return options.allowStale || isCacheFresh(snapshot.expiresAt) ? snapshot : undefined;
+    return cached as SnapshotCache;
   } catch {
     return undefined;
   }
+};
+
+const loadSnapshotCache = async (
+  cacheEnabled: boolean,
+  options: CacheReadOptions = {},
+): Promise<SnapshotCache | undefined> => {
+  const snapshot = await loadRawSnapshotCache(cacheEnabled);
+  if (!snapshot || !isUsableSnapshotCache(snapshot)) {
+    return undefined;
+  }
+
+  return options.allowStale || isCacheFresh(snapshot.expiresAt) ? snapshot : undefined;
 };
 
 const saveSnapshotCache = async (
@@ -218,6 +244,36 @@ const saveSnapshotCache = async (
     await getFootballStore().setJSON(snapshotCacheKey, snapshot);
   } catch {
     // Cache failures should not block live data responses.
+  }
+};
+
+const saveSnapshotFailureCache = async (
+  cacheEnabled: boolean,
+  error: unknown,
+): Promise<void> => {
+  if (!cacheEnabled) {
+    return;
+  }
+
+  const cachedAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + snapshotFailureCooldownMs).toISOString();
+  const message = error instanceof Error ? error.message : "Unknown upstream snapshot failure";
+
+  try {
+    await getFootballStore().setJSON(snapshotCacheKey, {
+      cachedAt,
+      expiresAt,
+      fixturesPayload: {
+        errors: {
+          snapshotRefresh: message,
+        },
+        results: 0,
+        response: [],
+      },
+      detailPayloads: [],
+    } satisfies SnapshotCache);
+  } catch {
+    // Failure cooldown writes should not block the response.
   }
 };
 
@@ -542,6 +598,15 @@ const getSnapshotForRequest = async (
     };
   }
 
+  const rawSnapshot = forceRefresh ? undefined : await loadRawSnapshotCache(cacheEnabled);
+  if (
+    rawSnapshot &&
+    !isUsableSnapshotCache(rawSnapshot) &&
+    isCacheFresh(rawSnapshot.expiresAt)
+  ) {
+    throw new Error(`Cached API-FOOTBALL snapshot is invalid: ${getSnapshotCacheError(rawSnapshot)}`);
+  }
+
   const staleSnapshot = await loadSnapshotCache(cacheEnabled, { allowStale: true });
 
   try {
@@ -560,6 +625,7 @@ const getSnapshotForRequest = async (
       };
     }
 
+    await saveSnapshotFailureCache(cacheEnabled, error);
     throw error;
   }
 };
