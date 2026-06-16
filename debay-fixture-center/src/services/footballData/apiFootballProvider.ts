@@ -76,6 +76,39 @@ export type ApiFootballSnapshot = {
 
 const proxyPath = "/.netlify/functions/football-data";
 
+const hasApiFootballErrors = (errors: unknown): boolean => {
+  if (!errors) {
+    return false;
+  }
+
+  if (typeof errors === "string") {
+    return errors.trim().length > 0;
+  }
+
+  if (Array.isArray(errors)) {
+    return errors.length > 0;
+  }
+
+  if (typeof errors === "object") {
+    return Object.keys(errors).length > 0;
+  }
+
+  return true;
+};
+
+const assertUsableSnapshot = (snapshot: ApiFootballSnapshotResponse): void => {
+  if (
+    hasApiFootballErrors(snapshot.fixturesPayload.errors) ||
+    snapshot.detailPayloads.some((payload) => hasApiFootballErrors(payload.errors))
+  ) {
+    throw new Error("API-FOOTBALL snapshot contains upstream errors.");
+  }
+
+  if ((snapshot.fixturesPayload.response?.length ?? 0) === 0) {
+    throw new Error("API-FOOTBALL snapshot is empty.");
+  }
+};
+
 const readJsonResponse = async <T>(response: Response): Promise<T> => {
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
@@ -281,6 +314,7 @@ export const fetchApiFootballSnapshot = async (
     action: "snapshot",
     force,
   });
+  assertUsableSnapshot(snapshot);
   const detailPayload: ApiFootballFixtureResponse = {
     response: snapshot.detailPayloads.flatMap((payload) => payload.response ?? []),
   };

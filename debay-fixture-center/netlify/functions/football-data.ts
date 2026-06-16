@@ -9,9 +9,9 @@ const storeName = "debay-fixture-center";
 const snapshotCacheKey = "api-football-world-cup-2026-snapshot.json";
 const lineupPredictionsCacheKey = "api-football-lineup-predictions-v2.json";
 const snapshotCacheMs = {
-  live: 15 * 1000,
-  matchDay: 5 * 60 * 1000,
-  settled: 60 * 60 * 1000,
+  live: 60 * 60 * 1000,
+  matchDay: 6 * 60 * 60 * 1000,
+  settled: 24 * 60 * 60 * 1000,
 };
 const lineupPredictionsMinCacheMs = 5 * 60 * 1000;
 
@@ -139,6 +139,48 @@ const getFootballStore = () => getStore(storeName, { consistency: "eventual" });
 const isCacheFresh = (expiresAt?: string): boolean =>
   Boolean(expiresAt && new Date(expiresAt).getTime() > Date.now());
 
+const hasApiFootballErrors = (errors: unknown): boolean => {
+  if (!errors) {
+    return false;
+  }
+
+  if (typeof errors === "string") {
+    return errors.trim().length > 0;
+  }
+
+  if (Array.isArray(errors)) {
+    return errors.length > 0;
+  }
+
+  if (typeof errors === "object") {
+    return Object.keys(errors).length > 0;
+  }
+
+  return true;
+};
+
+const assertUsableApiResponse = <T>(
+  payload: ApiFootballResponse<T>,
+  endpoint: string,
+): void => {
+  if (hasApiFootballErrors(payload.errors)) {
+    throw new Error(
+      JSON.stringify({
+        endpoint,
+        errors: payload.errors,
+      }),
+    );
+  }
+};
+
+const isUsableApiResponse = <T>(payload?: ApiFootballResponse<T>): boolean =>
+  Boolean(payload && !hasApiFootballErrors(payload.errors));
+
+const isUsableSnapshotCache = (snapshot: SnapshotCache): boolean =>
+  isUsableApiResponse(snapshot.fixturesPayload) &&
+  (snapshot.fixturesPayload.response?.length ?? 0) > 0 &&
+  snapshot.detailPayloads.every((payload) => isUsableApiResponse(payload));
+
 const loadSnapshotCache = async (
   cacheEnabled: boolean,
   options: CacheReadOptions = {},
@@ -154,6 +196,10 @@ const loadSnapshotCache = async (
     }
 
     const snapshot = cached as SnapshotCache;
+    if (!isUsableSnapshotCache(snapshot)) {
+      return undefined;
+    }
+
     return options.allowStale || isCacheFresh(snapshot.expiresAt) ? snapshot : undefined;
   } catch {
     return undefined;
@@ -164,7 +210,7 @@ const saveSnapshotCache = async (
   cacheEnabled: boolean,
   snapshot: SnapshotCache,
 ): Promise<void> => {
-  if (!cacheEnabled) {
+  if (!cacheEnabled || !isUsableSnapshotCache(snapshot)) {
     return;
   }
 
@@ -289,7 +335,10 @@ const readApiResponse = async <T>(
     );
   }
 
-  return payload as ApiFootballResponse<T>;
+  const apiPayload = payload as ApiFootballResponse<T>;
+  assertUsableApiResponse(apiPayload, endpoint);
+
+  return apiPayload;
 };
 
 const chunk = <T>(items: T[], size: number): T[][] => {
@@ -493,13 +542,26 @@ const getSnapshotForRequest = async (
     };
   }
 
-  const snapshot = await buildSnapshot(baseUrl, apiKey);
-  await saveSnapshotCache(cacheEnabled, snapshot);
+  const staleSnapshot = await loadSnapshotCache(cacheEnabled, { allowStale: true });
 
-  return {
-    cached: false,
-    ...snapshot,
-  };
+  try {
+    const snapshot = await buildSnapshot(baseUrl, apiKey);
+    await saveSnapshotCache(cacheEnabled, snapshot);
+
+    return {
+      cached: false,
+      ...snapshot,
+    };
+  } catch (error) {
+    if (staleSnapshot) {
+      return {
+        cached: true,
+        ...staleSnapshot,
+      };
+    }
+
+    throw error;
+  }
 };
 
 const getLineupPredictionsExpiresAt = (snapshot: SnapshotCache): string => {
@@ -755,22 +817,14 @@ export const handler = async (event: NetlifyEvent) => {
     }
   }
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    headers: {
-      accept: "application/json",
-      "x-apisports-key": apiKey,
-    },
-  });
-  const text = await response.text();
-  const payload = text ? JSON.parse(text) : {};
-
-  if (!response.ok) {
-    return jsonResponse(response.status, {
+  try {
+    const payload = await readApiResponse(baseUrl, apiKey, endpoint);
+    return jsonResponse(200, payload);
+  } catch (error) {
+    return jsonResponse(502, {
       message: "API-FOOTBALL request failed.",
       endpoint,
-      payload,
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
-
-  return jsonResponse(200, payload);
 };
